@@ -6,8 +6,42 @@ interface Props {
 }
 
 export const OwnerAndStoreSpotlight: React.FC<Props> = ({ onBookAppointment }) => {
+  // Candidate image paths in priority order (.jpeg, .jpg, .png, .webp)
+  const OWNER_CANDIDATES = [
+    '/images/owner.jpeg',
+    '/images/owner.jpg',
+    '/images/owner.png',
+    '/images/owner.webp',
+  ];
+
+  const SHOP_CANDIDATES = [
+    '/images/shop.jpeg',
+    '/images/shop.jpg',
+    '/images/shop.png',
+    '/images/shop.webp',
+  ];
+
+  const [ownerIdx, setOwnerIdx] = useState<number>(0);
   const [ownerImgFailed, setOwnerImgFailed] = useState<boolean>(false);
+
+  const [shopIdx, setShopIdx] = useState<number>(0);
   const [shopImgFailed, setShopImgFailed] = useState<boolean>(false);
+
+  const handleOwnerError = () => {
+    if (ownerIdx < OWNER_CANDIDATES.length - 1) {
+      setOwnerIdx((prev) => prev + 1);
+    } else {
+      setOwnerImgFailed(true);
+    }
+  };
+
+  const handleShopError = () => {
+    if (shopIdx < SHOP_CANDIDATES.length - 1) {
+      setShopIdx((prev) => prev + 1);
+    } else {
+      setShopImgFailed(true);
+    }
+  };
 
   const GOOGLE_MAPS_URL = "https://www.google.com/maps/place/ANAND+OPTICAL/@25.6111055,85.0504545,2883m/data=!3m2!1e3!4b1!4m6!3m5!1s0x39ed573ff65f2281:0x3b9fccb74ec6bc4c!8m2!3d25.6111059!4d85.0607543!16s%2Fg%2F11y95by830";
   const MAP_EMBED_URL = "https://maps.google.com/maps?q=25.6111059,85.0607543&hl=en&z=16&output=embed";
@@ -65,19 +99,9 @@ export const OwnerAndStoreSpotlight: React.FC<Props> = ({ onBookAppointment }) =
           <div className="lg:col-span-5 relative bg-gradient-to-br from-slate-900 via-slate-950 to-black min-h-[380px] lg:min-h-[460px] flex items-center justify-center overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800">
             {!ownerImgFailed ? (
               <img
-                src="/images/owner.jpg"
+                src={OWNER_CANDIDATES[ownerIdx]}
                 alt="Founder & Senior Master Optician - Anand Optical"
-                onError={() => {
-                  // Fallback to owner.png if owner.jpg isn't present
-                  const img = new Image();
-                  img.src = '/images/owner.png';
-                  img.onload = () => {
-                    const el = document.getElementById('owner-img') as HTMLImageElement;
-                    if (el) el.src = '/images/owner.png';
-                  };
-                  img.onerror = () => setOwnerImgFailed(true);
-                }}
-                id="owner-img"
+                onError={handleOwnerError}
                 className="w-full h-full object-cover object-top"
               />
             ) : (
@@ -270,18 +294,9 @@ export const OwnerAndStoreSpotlight: React.FC<Props> = ({ onBookAppointment }) =
           <div className="lg:col-span-5 relative bg-gradient-to-br from-slate-900 via-slate-950 to-black min-h-[300px] lg:min-h-[400px] flex items-center justify-center overflow-hidden border-t lg:border-t-0 lg:border-l border-slate-800 order-1 lg:order-2">
             {!shopImgFailed ? (
               <img
-                src="/images/shop.jpg"
+                src={SHOP_CANDIDATES[shopIdx]}
                 alt="Anand Optical Modern Showroom and Clinic"
-                onError={() => {
-                  const img = new Image();
-                  img.src = '/images/shop.png';
-                  img.onload = () => {
-                    const el = document.getElementById('shop-img') as HTMLImageElement;
-                    if (el) el.src = '/images/shop.png';
-                  };
-                  img.onerror = () => setShopImgFailed(true);
-                }}
-                id="shop-img"
+                onError={handleShopError}
                 className="w-full h-full object-cover"
               />
             ) : (
