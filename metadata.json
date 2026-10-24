@@ -1,0 +1,6 @@
+{
+  "name": "Anand Optical – Precision Eyewear & Clinic",
+  "description": "Premier optical boutique and computerized clinic with 24+ years clinical experience. Premium, middle, and budget frames, blue-cut, progressive lenses with direct WhatsApp ordering.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
