@@ -101,6 +101,11 @@ export const OwnerAndStoreSpotlight: React.FC<Props> = ({ onBookAppointment }) =
               <img
                 src={OWNER_CANDIDATES[ownerIdx]}
                 alt="Founder & Senior Master Optician - Anand Optical"
+                onLoad={(e) => {
+                  if (e.currentTarget.naturalWidth <= 1) {
+                    handleOwnerError();
+                  }
+                }}
                 onError={handleOwnerError}
                 className="w-full h-full object-cover object-top"
               />
@@ -296,6 +301,11 @@ export const OwnerAndStoreSpotlight: React.FC<Props> = ({ onBookAppointment }) =
               <img
                 src={SHOP_CANDIDATES[shopIdx]}
                 alt="Anand Optical Modern Showroom and Clinic"
+                onLoad={(e) => {
+                  if (e.currentTarget.naturalWidth <= 1) {
+                    handleShopError();
+                  }
+                }}
                 onError={handleShopError}
                 className="w-full h-full object-cover"
               />

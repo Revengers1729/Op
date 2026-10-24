@@ -42,6 +42,24 @@ export default function App() {
     }
   }, [cartItems]);
 
+  // Support clean non-hash URLs for Google Search indexing (/catalog, /store-location, etc.)
+  useEffect(() => {
+    const path = window.location.pathname.replace(/^\//, '').replace(/\/$/, '').toLowerCase();
+    const routeMap: Record<string, string> = {
+      'catalog': 'catalog',
+      'lens-lab': 'lens-tech',
+      'founder-clinic': 'founder-clinic',
+      'store-location': 'store-location',
+      'face-guide': 'face-guide',
+    };
+    if (routeMap[path]) {
+      setTimeout(() => {
+        const el = document.getElementById(routeMap[path]);
+        el?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, []);
+
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => {
