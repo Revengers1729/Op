@@ -8,8 +8,8 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #0B0F17;
-    color: #F8FAFC;
+    background-color: #FAF8FD;
+    color: #0F172A;
     overflow-x: hidden;
   }
 
@@ -18,23 +18,23 @@
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar matching royal purple theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F17;
+  background: #F1EDF9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: #C4B5FD;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #8B5CF6;
 }
 
 /* Glass reflection shine */
@@ -47,10 +47,15 @@
   animation: optical-shine 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
-/* Subtle grid texture */
+/* Radiant white & lavender gradient grid */
 .bg-optical-grid {
   background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(147, 51, 234, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(147, 51, 234, 0.05) 1px, transparent 1px);
+}
+
+/* Deep royal purple & cobalt gradient for hero / accent bars */
+.bg-royal-gradient {
+  background: linear-gradient(135deg, #0A1938 0%, #162456 35%, #2E1065 75%, #4C1D95 100%);
 }

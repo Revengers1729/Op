@@ -13,15 +13,15 @@ export const LegalModals: React.FC<Props> = ({ activePolicy, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-8">
+      <div className="relative w-full max-w-3xl bg-[#0C1535] border border-purple-500/30 rounded-2xl shadow-2xl shadow-purple-950/50 overflow-hidden my-8">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-purple-500/30 bg-gradient-to-r from-[#0A1938] via-[#162456] to-[#2E1065]">
           <div className="flex items-center gap-2.5">
-            {activePolicy === 'privacy' && <Shield className="w-5 h-5 text-sky-400" />}
-            {activePolicy === 'terms' && <FileText className="w-5 h-5 text-amber-400" />}
+            {activePolicy === 'privacy' && <Shield className="w-5 h-5 text-purple-300" />}
+            {activePolicy === 'terms' && <FileText className="w-5 h-5 text-purple-300" />}
             {activePolicy === 'refund' && <RefreshCw className="w-5 h-5 text-emerald-400" />}
-            {activePolicy === 'cookies' && <Cookie className="w-5 h-5 text-indigo-400" />}
+            {activePolicy === 'cookies' && <Cookie className="w-5 h-5 text-purple-300" />}
 
             <h3 className="text-lg font-bold text-white capitalize">
               {activePolicy === 'privacy' && 'Privacy Policy'}
@@ -33,18 +33,18 @@ export const LegalModals: React.FC<Props> = ({ activePolicy, onClose }) => {
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-purple-200 hover:text-white rounded-md hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto text-xs text-slate-300 leading-relaxed space-y-4">
+        <div className="p-6 max-h-[70vh] overflow-y-auto text-xs text-purple-100/90 leading-relaxed space-y-4">
           {/* ================= PRIVACY POLICY ================= */}
           {activePolicy === 'privacy' && (
             <>
-              <p className="text-slate-400">
+              <p className="text-purple-300/80">
                 <strong>Effective Date:</strong> October 2026 | <strong>Entity:</strong> Anand Optical (+91 94308 00015)
               </p>
 
@@ -73,7 +73,7 @@ export const LegalModals: React.FC<Props> = ({ activePolicy, onClose }) => {
           {/* ================= TERMS OF SERVICE ================= */}
           {activePolicy === 'terms' && (
             <>
-              <p className="text-slate-400">
+              <p className="text-purple-300/80">
                 <strong>Last Updated:</strong> October 2026 | <strong>Jurisdiction:</strong> Anand Optical
               </p>
 
@@ -102,12 +102,12 @@ export const LegalModals: React.FC<Props> = ({ activePolicy, onClose }) => {
           {/* ================= REFUND & ADAPTATION POLICY ================= */}
           {activePolicy === 'refund' && (
             <>
-              <p className="text-slate-400">
+              <p className="text-purple-300/80">
                 <strong>Clinical Guarantee:</strong> Anand Optical 7-Day Adaptation & Exchange Policy
               </p>
 
-              <div className="p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-lg text-emerald-300">
-                <strong>Our Clinical Promise:</strong> Because our optical incharge has over 24 years of experience, we stand behind the optical comfort of every pair of glasses we dispense.
+              <div className="p-3 bg-purple-900/40 border border-purple-400/40 rounded-lg text-purple-200">
+                <strong className="text-white">Our Clinical Promise:</strong> Because our optical incharge has over 24 years of experience, we stand behind the optical comfort of every pair of glasses we dispense.
               </div>
 
               <h4 className="text-sm font-bold text-white mt-4">1. 7-Day Optical Adaptation Guarantee</h4>
@@ -130,7 +130,7 @@ export const LegalModals: React.FC<Props> = ({ activePolicy, onClose }) => {
           {/* ================= COOKIE POLICY ================= */}
           {activePolicy === 'cookies' && (
             <>
-              <p className="text-slate-400">
+              <p className="text-purple-300/80">
                 <strong>Cookie & Local Storage Policy</strong>
               </p>
 
@@ -148,13 +148,13 @@ export const LegalModals: React.FC<Props> = ({ activePolicy, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
-          <span className="text-[11px] text-slate-500">
-            For questions, call our direct line: <strong className="text-slate-300">+91 94308 00015</strong>
+        <div className="px-6 py-3 bg-[#080E24] border-t border-purple-500/25 flex items-center justify-between">
+          <span className="text-[11px] text-purple-300/70">
+            For questions, call our direct line: <strong className="text-white">+91 94308 00015</strong>
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-md transition-colors"
+            className="px-4 py-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white rounded-md transition-colors shadow-sm"
           >
             Close
           </button>

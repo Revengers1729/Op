@@ -62,6 +62,10 @@ export const Glasses3DViewer: React.FC<Props> = () => {
     dirLight2.position.set(-6, -3, -4);
     scene.add(dirLight2);
 
+    const purpleRimLight = new THREE.DirectionalLight(0xa855f7, 1.3); // Royal purple aesthetic rim
+    purpleRimLight.position.set(0, 6, -5);
+    scene.add(purpleRimLight);
+
     const goldRimLight = new THREE.DirectionalLight(0xf59e0b, 1.0);
     goldRimLight.position.set(0, -6, 5);
     scene.add(goldRimLight);
@@ -329,23 +333,23 @@ export const Glasses3DViewer: React.FC<Props> = () => {
   };
 
   return (
-    <div className="relative w-full h-[460px] md:h-[520px] bg-gradient-to-b from-slate-900/80 via-[#0B0F17] to-slate-950 border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl flex flex-col justify-between">
+    <div className="relative w-full h-[460px] md:h-[520px] bg-gradient-to-b from-[#0B1538]/95 via-[#141B4B]/95 to-[#241042]/95 border border-purple-400/30 rounded-xl overflow-hidden shadow-2xl shadow-purple-950/40 flex flex-col justify-between">
       {/* Top HUD Bar */}
       <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-300">
-          <span className="text-sky-400 font-semibold">10D PRECISION VIEW</span>
-          <span aria-hidden="true" className="text-slate-600">·</span>
+        <div className="flex items-center gap-2 text-xs font-mono text-purple-200">
+          <span className="text-purple-300 font-semibold tracking-wide">10D PRECISION VIEW</span>
+          <span aria-hidden="true" className="text-purple-400/50">·</span>
           <span>IOR 1.58</span>
-          <span aria-hidden="true" className="text-slate-600">·</span>
+          <span aria-hidden="true" className="text-purple-400/50">·</span>
           <span>4-BASE CURVE</span>
         </div>
 
         <button
           onClick={() => setAutoRotate(!autoRotate)}
-          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700 rounded-md transition-colors backdrop-blur-md"
+          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#131E4D]/80 hover:bg-[#1C2C6E]/90 text-purple-100 border border-purple-400/40 rounded-md transition-colors backdrop-blur-md"
           title="Toggle 360 Rotation"
         >
-          <RotateCw className={`w-3.5 h-3.5 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
+          <RotateCw className={`w-3.5 h-3.5 text-purple-300 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '6s' }} />
           <span>{autoRotate ? 'Rotating' : 'Static'}</span>
         </button>
       </div>
@@ -361,24 +365,24 @@ export const Glasses3DViewer: React.FC<Props> = () => {
       />
 
       {/* Drag & Tilt Interaction Hint */}
-      <div className="absolute top-1/2 left-4 -translate-y-1/2 hidden md:flex flex-col gap-1 text-[11px] font-mono text-slate-500 pointer-events-none">
+      <div className="absolute top-1/2 left-4 -translate-y-1/2 hidden md:flex flex-col gap-1 text-[11px] font-mono text-purple-300/50 pointer-events-none">
         <span>[DRAG TO ROTATE 360°]</span>
         <span>[PINCH/SWIPE TO TILT]</span>
       </div>
 
       {/* Bottom Interactive Controls */}
-      <div className="relative z-10 px-4 py-3 bg-slate-900/90 border-t border-slate-800/80 backdrop-blur-md flex flex-wrap items-center justify-between gap-3">
+      <div className="relative z-10 px-4 py-3 bg-[#081230]/95 border-t border-purple-500/25 backdrop-blur-md flex flex-wrap items-center justify-between gap-3">
         {/* Frame Material Selector */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mr-1">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-purple-200 mr-1">
             <Layers className="w-3.5 h-3.5 text-amber-400" />
             <span>Finish:</span>
           </div>
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-md border border-slate-800">
+          <div className="flex items-center gap-1 bg-[#050B20] p-1 rounded-md border border-purple-500/30">
             <button
               onClick={() => setFrameMaterial('gold')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                frameMaterial === 'gold' ? 'bg-amber-400 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                frameMaterial === 'gold' ? 'bg-amber-400 text-slate-950 font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               Gold Ion
@@ -386,7 +390,7 @@ export const Glasses3DViewer: React.FC<Props> = () => {
             <button
               onClick={() => setFrameMaterial('black')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                frameMaterial === 'black' ? 'bg-slate-200 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                frameMaterial === 'black' ? 'bg-purple-600 text-white font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               Obsidian
@@ -394,7 +398,7 @@ export const Glasses3DViewer: React.FC<Props> = () => {
             <button
               onClick={() => setFrameMaterial('silver')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                frameMaterial === 'silver' ? 'bg-slate-200 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                frameMaterial === 'silver' ? 'bg-slate-200 text-slate-950 font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               Titanium
@@ -402,7 +406,7 @@ export const Glasses3DViewer: React.FC<Props> = () => {
             <button
               onClick={() => setFrameMaterial('amber')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                frameMaterial === 'amber' ? 'bg-amber-700 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                frameMaterial === 'amber' ? 'bg-amber-700 text-white font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               Tortoise
@@ -412,15 +416,15 @@ export const Glasses3DViewer: React.FC<Props> = () => {
 
         {/* Lens Coating Selector */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mr-1">
-            <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+          <div className="flex items-center gap-1.5 text-xs font-medium text-purple-200 mr-1">
+            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
             <span>Optics:</span>
           </div>
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-md border border-slate-800">
+          <div className="flex items-center gap-1 bg-[#050B20] p-1 rounded-md border border-purple-500/30">
             <button
               onClick={() => setLensMode('ar_clear')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                lensMode === 'ar_clear' ? 'bg-sky-500 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                lensMode === 'ar_clear' ? 'bg-purple-600 text-white font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               AR Clear
@@ -428,7 +432,7 @@ export const Glasses3DViewer: React.FC<Props> = () => {
             <button
               onClick={() => setLensMode('blue_cut')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                lensMode === 'blue_cut' ? 'bg-indigo-500 text-white font-semibold' : 'text-slate-400 hover:text-white'
+                lensMode === 'blue_cut' ? 'bg-indigo-500 text-white font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               Blue Shield
@@ -436,7 +440,7 @@ export const Glasses3DViewer: React.FC<Props> = () => {
             <button
               onClick={() => setLensMode('transition')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                lensMode === 'transition' ? 'bg-slate-300 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                lensMode === 'transition' ? 'bg-slate-300 text-slate-950 font-semibold' : 'text-purple-300 hover:text-white'
               }`}
             >
               Transition
@@ -444,7 +448,7 @@ export const Glasses3DViewer: React.FC<Props> = () => {
             <button
               onClick={() => setLensMode('sun_dark')}
               className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
-                lensMode === 'sun_dark' ? 'bg-slate-700 text-amber-300 font-semibold' : 'text-slate-400 hover:text-white'
+                lensMode === 'sun_dark' ? 'bg-purple-900 text-amber-300 font-semibold border border-purple-400/40' : 'text-purple-300 hover:text-white'
               }`}
             >
               Polarized

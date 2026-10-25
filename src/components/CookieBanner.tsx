@@ -38,9 +38,9 @@ export const CookieBanner: React.FC<Props> = ({ onOpenPolicy }) => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 z-40 max-w-lg bg-slate-900 border border-slate-700/80 rounded-xl p-5 shadow-2xl backdrop-blur-md animate-fade-in text-slate-200">
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 z-40 max-w-lg bg-[#0B1538]/95 border border-purple-500/40 rounded-xl p-5 shadow-2xl shadow-purple-950/40 backdrop-blur-md animate-fade-in text-purple-100">
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-300 shrink-0">
           <Cookie className="w-5 h-5" />
         </div>
 
@@ -48,43 +48,43 @@ export const CookieBanner: React.FC<Props> = ({ onOpenPolicy }) => {
           <h4 className="text-xs font-bold text-white uppercase tracking-wider">
             Cookie & Privacy Preferences
           </h4>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+          <p className="text-xs text-purple-200/80 mt-1 leading-relaxed">
             We use essential cookies to maintain your eyewear order tray and remembered frame settings. No invasive tracking is performed. Read our{' '}
             <button
               onClick={() => onOpenPolicy('cookies')}
-              className="text-sky-400 hover:underline font-medium"
+              className="text-purple-300 hover:underline font-medium"
             >
               Cookie Policy
             </button>{' '}
             &{' '}
             <button
               onClick={() => onOpenPolicy('privacy')}
-              className="text-sky-400 hover:underline font-medium"
+              className="text-purple-300 hover:underline font-medium"
             >
               Privacy Policy
             </button>.
           </p>
 
           {showCustomize && (
-            <div className="mt-3 p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2 text-xs">
+            <div className="mt-3 p-3 bg-[#060D26] rounded-lg border border-purple-500/30 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="font-bold text-white block">Strictly Essential Cookies</span>
-                  <span className="text-[10px] text-slate-500">Order tray, lens options, security tokens</span>
+                  <span className="text-[10px] text-purple-300/70">Order tray, lens options, security tokens</span>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-400 font-semibold">Always Active</span>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+              <div className="flex items-center justify-between pt-1 border-t border-purple-900/50">
                 <div>
                   <span className="font-bold text-white block">Functional Diagnostics</span>
-                  <span className="text-[10px] text-slate-500">Anonymous 3D canvas frame render performance</span>
+                  <span className="text-[10px] text-purple-300/70">Anonymous 3D canvas frame render performance</span>
                 </div>
                 <input
                   type="checkbox"
                   checked={analyticsAllowed}
                   onChange={(e) => setAnalyticsAllowed(e.target.checked)}
-                  className="accent-sky-500 cursor-pointer"
+                  className="accent-purple-500 cursor-pointer"
                 />
               </div>
             </div>
@@ -96,19 +96,19 @@ export const CookieBanner: React.FC<Props> = ({ onOpenPolicy }) => {
               <>
                 <button
                   onClick={handleAcceptAll}
-                  className="px-3.5 py-1.5 text-xs font-semibold bg-white text-slate-950 hover:bg-slate-200 rounded-md transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-purple-600 text-white hover:bg-purple-500 rounded-md transition-colors shadow-sm"
                 >
                   Accept All
                 </button>
                 <button
                   onClick={handleEssentialOnly}
-                  className="px-3.5 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-[#162456] hover:bg-[#1E306E] text-purple-200 border border-purple-400/30 rounded-md transition-colors"
                 >
                   Essential Only
                 </button>
                 <button
                   onClick={() => setShowCustomize(true)}
-                  className="px-3.5 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-medium text-purple-300 hover:text-white transition-colors"
                 >
                   Customize
                 </button>
@@ -117,13 +117,13 @@ export const CookieBanner: React.FC<Props> = ({ onOpenPolicy }) => {
               <>
                 <button
                   onClick={handleSaveCustom}
-                  className="px-4 py-1.5 text-xs font-semibold bg-sky-500 text-slate-950 hover:bg-sky-400 rounded-md transition-colors"
+                  className="px-4 py-1.5 text-xs font-semibold bg-purple-600 text-white hover:bg-purple-500 rounded-md transition-colors"
                 >
                   Save Choices
                 </button>
                 <button
                   onClick={() => setShowCustomize(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium text-purple-300 hover:text-white transition-colors"
                 >
                   Back
                 </button>
@@ -134,7 +134,7 @@ export const CookieBanner: React.FC<Props> = ({ onOpenPolicy }) => {
 
         <button
           onClick={handleEssentialOnly}
-          className="text-slate-500 hover:text-white p-1 rounded"
+          className="text-purple-300/60 hover:text-white p-1 rounded"
           title="Close"
         >
           <X className="w-4 h-4" />

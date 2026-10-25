@@ -75,20 +75,20 @@ export const ProductCustomizerModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-white border border-purple-200 rounded-2xl shadow-2xl overflow-hidden my-8">
         
         {/* Header bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-purple-100 bg-gradient-to-r from-[#0A1938] via-[#162456] to-[#2E1065] text-white">
           <div>
-            <span className="text-[11px] font-mono text-sky-400 font-semibold uppercase tracking-wider">
+            <span className="text-[11px] font-mono text-purple-200 font-semibold uppercase tracking-wider">
               OPTICAL CONFIGURATOR · {item.tier}
             </span>
             <h3 className="text-xl font-bold text-white">{item.name}</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-2 text-purple-200 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -97,9 +97,9 @@ export const ProductCustomizerModal: React.FC<Props> = ({
         {/* Content Body Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 max-h-[75vh] overflow-y-auto">
           {/* Left Preview Column */}
-          <div className="md:col-span-5 p-6 bg-slate-950 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-800">
+          <div className="md:col-span-5 p-6 bg-[#FAF8FD] flex flex-col justify-between border-b md:border-b-0 md:border-r border-purple-100">
             <div>
-              <div className="h-48 sm:h-56 bg-slate-900/60 rounded-xl border border-slate-800 p-4 flex items-center justify-center">
+              <div className="h-48 sm:h-56 bg-white rounded-xl border border-purple-100 p-4 flex items-center justify-center shadow-xs">
                 <EyewearGraphic
                   shape={item.shape}
                   color={selectedColor}
@@ -108,7 +108,7 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                     selectedLens.id === 'polarized_sun'
                       ? 'rgba(15, 23, 42, 0.75)'
                       : selectedLens.id === 'blue_cut_shield'
-                      ? 'rgba(99, 102, 241, 0.15)'
+                      ? 'rgba(124, 58, 237, 0.15)'
                       : 'rgba(255, 255, 255, 0.08)'
                   }
                 />
@@ -116,8 +116,8 @@ export const ProductCustomizerModal: React.FC<Props> = ({
 
               {/* Color Swatches */}
               <div className="mt-5">
-                <label className="text-xs font-semibold text-slate-300 block mb-2">
-                  Select Frame Color: <span className="text-amber-400">{selectedColor.name}</span>
+                <label className="text-xs font-semibold text-slate-800 block mb-2">
+                  Select Frame Color: <span className="text-purple-700 font-bold">{selectedColor.name}</span>
                 </label>
                 <div className="flex items-center gap-2">
                   {item.colors.map((c) => (
@@ -126,8 +126,8 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                       onClick={() => setSelectedColor(c)}
                       className={`relative w-8 h-8 rounded-full border-2 transition-transform ${
                         selectedColor.name === c.name
-                          ? 'border-sky-400 scale-110 shadow-md'
-                          : 'border-slate-700 hover:scale-105'
+                          ? 'border-purple-600 scale-110 shadow-md'
+                          : 'border-slate-300 hover:scale-105'
                       }`}
                       style={{ backgroundColor: c.hex }}
                       title={c.name}
@@ -141,40 +141,40 @@ export const ProductCustomizerModal: React.FC<Props> = ({
               </div>
 
               {/* Dimensions */}
-              <div className="mt-6 p-3 bg-slate-900/80 rounded-lg border border-slate-800/80 text-xs text-slate-400 space-y-1 font-mono">
+              <div className="mt-6 p-3 bg-white rounded-lg border border-purple-100 text-xs text-slate-600 space-y-1 font-mono shadow-xs">
                 <div className="flex justify-between">
                   <span>Lens Width:</span>
-                  <span className="text-white">{item.dimensions.lensWidth} mm</span>
+                  <span className="text-slate-900 font-bold">{item.dimensions.lensWidth} mm</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Nose Bridge:</span>
-                  <span className="text-white">{item.dimensions.bridge} mm</span>
+                  <span className="text-slate-900 font-bold">{item.dimensions.bridge} mm</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Temple Length:</span>
-                  <span className="text-white">{item.dimensions.temple} mm</span>
+                  <span className="text-slate-900 font-bold">{item.dimensions.temple} mm</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Weight:</span>
-                  <span className="text-amber-400 font-bold">{item.weightGrams} grams</span>
+                  <span className="text-purple-700 font-bold">{item.weightGrams} grams</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 text-[11px] text-slate-400">
-              <span className="text-emerald-400 font-semibold">✓ Anand Quality Guarantee:</span> All frames undergo ultrasonic ultrasonic sonic balance alignment prior to dispatch.
+            <div className="mt-6 text-[11px] text-slate-500">
+              <span className="text-emerald-700 font-bold">✓ Anand Quality Guarantee:</span> All frames undergo ultrasonic sonic balance alignment prior to dispatch.
             </div>
           </div>
 
           {/* Right Configuration Column */}
-          <div className="md:col-span-7 p-6 space-y-6">
+          <div className="md:col-span-7 p-6 space-y-6 bg-white">
             {/* Step 1: Lens Option */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <label className="text-xs font-bold text-white uppercase tracking-wider">
+                <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   1. Choose Your Lens Technology:
                 </label>
-                <span className="text-[11px] font-mono text-slate-400">Precision Surfaced</span>
+                <span className="text-[11px] font-mono text-purple-700 font-medium">Precision Surfaced</span>
               </div>
 
               <div className="space-y-2">
@@ -182,26 +182,26 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                   <button
                     key={lens.id}
                     onClick={() => setSelectedLens(lens)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all flex items-start justify-between gap-3 ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-start justify-between gap-3 ${
                       selectedLens.id === lens.id
-                        ? 'bg-sky-500/10 border-sky-500 text-white shadow-sm'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-purple-50/80 border-purple-600 text-slate-900 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-purple-200'
                     }`}
                   >
                     <div>
                       <div className="text-xs font-bold flex items-center gap-1.5">
                         <span>{lens.name}</span>
                         {lens.id === 'blue_cut_shield' && (
-                          <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-semibold">
                             Bestseller
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{lens.description}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{lens.description}</div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="text-xs font-mono font-bold text-emerald-400">
+                      <div className="text-xs font-mono font-bold text-purple-700">
                         {lens.priceAddon === 0 ? 'Included' : `+₹${lens.priceAddon}`}
                       </div>
                     </div>
@@ -212,7 +212,7 @@ export const ProductCustomizerModal: React.FC<Props> = ({
 
             {/* Step 2: Prescription Power Mode */}
             <div>
-              <label className="text-xs font-bold text-white uppercase tracking-wider block mb-2">
+              <label className="text-xs font-bold text-slate-900 uppercase tracking-wider block mb-2">
                 2. Prescription Specification:
               </label>
 
@@ -220,64 +220,64 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setPowerMode('upload_wa')}
-                  className={`p-2.5 rounded-lg border text-center transition-colors ${
+                  className={`p-2.5 rounded-xl border text-center transition-colors ${
                     powerMode === 'upload_wa'
-                      ? 'bg-sky-500/20 border-sky-400 text-white font-semibold'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      ? 'bg-purple-100 border-purple-600 text-purple-900 font-semibold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'
                   }`}
                 >
-                  <Send className="w-4 h-4 mx-auto mb-1 text-emerald-400" />
+                  <Send className="w-4 h-4 mx-auto mb-1 text-emerald-600" />
                   <span className="text-[11px] block">Send Rx on WhatsApp</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPowerMode('custom')}
-                  className={`p-2.5 rounded-lg border text-center transition-colors ${
+                  className={`p-2.5 rounded-xl border text-center transition-colors ${
                     powerMode === 'custom'
-                      ? 'bg-sky-500/20 border-sky-400 text-white font-semibold'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      ? 'bg-purple-100 border-purple-600 text-purple-900 font-semibold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'
                   }`}
                 >
-                  <Eye className="w-4 h-4 mx-auto mb-1 text-sky-400" />
+                  <Eye className="w-4 h-4 mx-auto mb-1 text-purple-700" />
                   <span className="text-[11px] block">Type Power Now</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setPowerMode('later')}
-                  className={`p-2.5 rounded-lg border text-center transition-colors ${
+                  className={`p-2.5 rounded-xl border text-center transition-colors ${
                     powerMode === 'later'
-                      ? 'bg-sky-500/20 border-sky-400 text-white font-semibold'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                      ? 'bg-purple-100 border-purple-600 text-purple-900 font-semibold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4 mx-auto mb-1 text-amber-400" />
+                  <Sparkles className="w-4 h-4 mx-auto mb-1 text-amber-600" />
                   <span className="text-[11px] block">Zero Power / Call Me</span>
                 </button>
               </div>
 
               {/* If user selected Type Power Now */}
               {powerMode === 'custom' && (
-                <div className="mt-3 p-3 bg-slate-950 rounded-lg border border-slate-800 grid grid-cols-2 gap-3 text-xs">
+                <div className="mt-3 p-3 bg-purple-50/50 rounded-xl border border-purple-100 grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">Right Eye (OD):</label>
+                    <label className="text-[11px] text-slate-600 block mb-1">Right Eye (OD):</label>
                     <input
                       type="text"
                       placeholder="e.g. -1.50 / -0.50 Cyl"
                       value={rightEye}
                       onChange={(e) => setRightEye(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-sky-400"
+                      className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 font-mono placeholder:text-slate-400 focus:outline-none focus:border-purple-600"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-400 block mb-1">Left Eye (OS):</label>
+                    <label className="text-[11px] text-slate-600 block mb-1">Left Eye (OS):</label>
                     <input
                       type="text"
                       placeholder="e.g. -2.00 / -0.25 Cyl"
                       value={leftEye}
                       onChange={(e) => setLeftEye(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-sky-400"
+                      className="w-full bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 font-mono placeholder:text-slate-400 focus:outline-none focus:border-purple-600"
                     />
                   </div>
                 </div>
@@ -285,12 +285,12 @@ export const ProductCustomizerModal: React.FC<Props> = ({
             </div>
 
             {/* Price Breakdown & CTAs */}
-            <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <div className="text-xs text-slate-400">Total Complete Eyewear:</div>
-                <div className="text-2xl font-bold text-white font-mono flex items-baseline gap-2">
+                <div className="text-xs text-slate-500">Total Complete Eyewear:</div>
+                <div className="text-2xl font-bold text-slate-900 font-mono flex items-baseline gap-2">
                   <span>₹{totalPrice.toLocaleString('en-IN')}</span>
-                  <span className="text-xs text-slate-500 line-through">
+                  <span className="text-xs text-slate-400 line-through">
                     ₹{(item.originalPrice + selectedLens.priceAddon).toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -300,7 +300,7 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={handleAddAndClose}
-                  className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white rounded-md border border-slate-700 transition-colors"
+                  className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-md transition-colors"
                 >
                   + Add to Tray
                 </button>
@@ -308,7 +308,7 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={handleInstantWhatsApp}
-                  className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/40"
+                  className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-md"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Order on WhatsApp</span>

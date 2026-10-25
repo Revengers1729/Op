@@ -8,16 +8,16 @@ interface Props {
 
 export const MobileStickyCTA: React.FC<Props> = ({ cartCount, onOpenCart }) => {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 border-t border-slate-800 backdrop-blur-md px-3 py-2 flex items-center justify-between gap-3 shadow-[0_-8px_20px_rgba(0,0,0,0.5)]">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#0A1938]/95 border-t border-purple-500/30 backdrop-blur-md px-3 py-2 flex items-center justify-between gap-3 shadow-[0_-8px_20px_rgba(10,25,56,0.35)]">
       {/* Tray quick peek */}
       <button
         onClick={onOpenCart}
-        className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 rounded-md text-xs font-semibold text-slate-200"
+        className="flex items-center gap-2 px-3 py-2 bg-[#162456] border border-purple-400/40 rounded-md text-xs font-semibold text-white hover:bg-[#203170] transition-colors"
       >
         <div className="relative">
-          <ShoppingBag className="w-4 h-4 text-amber-400" />
+          <ShoppingBag className="w-4 h-4 text-purple-300" />
           {cartCount > 0 && (
-            <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[9px] font-mono font-bold flex items-center justify-center">
+            <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-mono font-bold flex items-center justify-center">
               {cartCount}
             </span>
           )}

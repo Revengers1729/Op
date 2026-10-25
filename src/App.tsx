@@ -144,11 +144,11 @@ export default function App() {
   const totalCartCount = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex flex-col justify-between selection:bg-amber-400 selection:text-slate-950 font-sans">
+    <div className="min-h-screen bg-[#FAF8FD] text-slate-900 flex flex-col justify-between selection:bg-purple-600 selection:text-white font-sans">
       
       {/* Toast Notification Bar */}
       {notification && (
-        <div className="fixed top-16 right-4 z-50 bg-slate-900 border border-amber-400 text-white px-4 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 text-xs font-semibold animate-bounce">
+        <div className="fixed top-16 right-4 z-50 bg-[#162456] border border-purple-400/50 text-white px-4 py-2.5 rounded-lg shadow-2xl shadow-purple-950/30 flex items-center gap-2 text-xs font-semibold animate-bounce">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
           <span>{notification}</span>
         </div>

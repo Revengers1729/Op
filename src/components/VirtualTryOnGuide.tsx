@@ -100,25 +100,25 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
   }, []);
 
   return (
-    <section id="face-guide" className="py-20 bg-slate-950 border-t border-slate-800/80 text-slate-100 relative">
+    <section id="face-guide" className="py-20 bg-gradient-to-b from-white via-[#FAF8FD] to-[#F5F0FF] border-t border-purple-100 text-slate-900 relative">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         
         {/* Section Heading */}
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="flex items-center justify-center gap-2 text-xs font-mono text-amber-400 mb-2 tracking-wider">
-            <span>PHYSIOGNOMIC OPTICAL ALIGNMENT</span>
-            <span aria-hidden="true">·</span>
+          <div className="flex items-center justify-center gap-2 text-xs font-mono text-purple-700 mb-2 tracking-wider font-semibold uppercase">
+            <span>FACIAL PROPORTION & HARMONY</span>
+            <span aria-hidden="true" className="text-purple-300">·</span>
             <span>FIND YOUR FIT</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-3">
             Face Shape Matrix & Live Mirror Try-On
           </h2>
-          <p className="text-sm text-slate-400 leading-relaxed">
+          <p className="text-sm text-slate-600 leading-relaxed">
             Finding your quintessential spectacles requires balancing frame geometry against your cheekbones and jawline. Use our clinical matching guide or launch the live camera mirror.
           </p>
         </div>
 
-        {/* Dual Column Layout: Left Face Shape Selector, Right Virtual Mirror / 3D Stage */}
+        {/* Dual Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column: Face Shapes Selector & Recommendations */}
@@ -128,54 +128,56 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
                 <button
                   key={face.id}
                   onClick={() => setSelectedFace(face)}
-                  className={`p-3 rounded-lg border text-center transition-all ${
+                  className={`p-3 rounded-xl border text-center transition-all ${
                     selectedFace.id === face.id
-                      ? 'bg-amber-400/10 border-amber-400 text-white shadow-sm'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                      ? 'bg-purple-700 text-white border-purple-700 shadow-md font-semibold'
+                      : 'bg-white border-purple-100 text-slate-600 hover:border-purple-300 hover:text-purple-700'
                   }`}
                 >
                   <span className="text-xs font-bold block">{face.name.split(' ')[0]}</span>
-                  <span className="text-[10px] text-slate-500 capitalize">{face.recommended[0]}</span>
+                  <span className={`text-[10px] capitalize block ${selectedFace.id === face.id ? 'text-purple-200' : 'text-slate-400'}`}>
+                    {face.recommended[0]}
+                  </span>
                 </button>
               ))}
             </div>
 
             {/* Selected Face Details Card */}
-            <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-xl space-y-4">
+            <div className="p-6 bg-white border border-purple-100 rounded-2xl shadow-md space-y-4">
               <div>
-                <span className="text-[11px] font-mono text-amber-400 font-semibold uppercase">
+                <span className="text-[11px] font-mono text-purple-700 font-semibold uppercase">
                   {selectedFace.name} ANALYSIS
                 </span>
-                <h3 className="text-lg font-bold text-white mt-0.5">{selectedFace.description}</h3>
+                <h3 className="text-lg font-bold text-slate-900 mt-0.5">{selectedFace.description}</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="text-emerald-400 font-bold block mb-1">Recommended Geometries:</span>
+                <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100">
+                  <span className="text-purple-800 font-bold block mb-1">Recommended Geometries:</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {selectedFace.recommended.map((r) => (
-                      <span key={r} className="text-slate-200 bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                      <span key={r} className="text-purple-900 bg-white px-2 py-0.5 rounded text-[11px] font-medium border border-purple-200 shadow-2xs">
                         {r}
                       </span>
                     ))}
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="text-rose-400 font-bold block mb-1">Frame Shapes to Avoid:</span>
-                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                <div className="p-3 bg-rose-50/70 rounded-xl border border-rose-100">
+                  <span className="text-rose-700 font-bold block mb-1">Frame Shapes to Avoid:</span>
+                  <p className="text-slate-600 text-[11px] leading-relaxed">
                     {selectedFace.avoid}
                   </p>
                 </div>
               </div>
 
-              <div className="p-3 bg-amber-950/20 border border-amber-500/20 rounded-lg text-xs text-amber-200/90 leading-relaxed">
-                <strong>Optician's Pro-Tip: </strong> {selectedFace.tip}
+              <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900 leading-relaxed">
+                <strong>Optician's Advice: </strong> {selectedFace.tip}
               </div>
 
               {/* Recommended Frames for this Face Shape */}
               <div className="pt-2">
-                <div className="text-xs font-bold text-white mb-3">
+                <div className="text-xs font-bold text-slate-900 mb-3">
                   Matching Frames in Stock:
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -188,17 +190,17 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
                         setActiveFrame(f);
                         onSelectFrame(f);
                       }}
-                      className={`p-2.5 rounded-lg border text-left transition-colors flex items-center justify-between gap-2 ${
+                      className={`p-2.5 rounded-xl border text-left transition-colors flex items-center justify-between gap-2 ${
                         activeFrame.id === f.id
-                          ? 'bg-sky-500/15 border-sky-400 text-white'
-                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                          ? 'bg-purple-100 border-purple-400 text-purple-900 font-semibold'
+                          : 'bg-[#FAF8FD] border-purple-100 text-slate-700 hover:border-purple-300'
                       }`}
                     >
                       <div>
                         <div className="text-xs font-semibold truncate max-w-[120px]">{f.name}</div>
-                        <div className="text-[10px] font-mono text-slate-400">₹{f.price}</div>
+                        <div className="text-[10px] font-mono text-purple-700 font-bold">₹{f.price}</div>
                       </div>
-                      <span className="text-[10px] text-sky-400 font-mono">Select</span>
+                      <span className="text-[10px] text-purple-700 font-mono font-medium">Select</span>
                     </button>
                   ))}
                 </div>
@@ -206,12 +208,12 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
             </div>
           </div>
 
-          {/* Right Column: Live Video Mirror & Drag/Scale Simulator */}
-          <div className="lg:col-span-6 bg-slate-900/60 border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
+          {/* Right Column: Live Video Mirror */}
+          <div className="lg:col-span-6 bg-white border border-purple-100 rounded-2xl p-6 shadow-md flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-sky-400 font-semibold uppercase">
+                  <span className="text-xs font-mono text-purple-700 font-semibold uppercase">
                     VIRTUAL MIRROR TRY-ON
                   </span>
                 </div>
@@ -219,7 +221,7 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
                 {!cameraActive ? (
                   <button
                     onClick={startCamera}
-                    className="px-3.5 py-1.5 text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-md transition-colors flex items-center gap-1.5 shadow-sm"
+                    className="px-3.5 py-1.5 text-xs font-semibold bg-purple-700 hover:bg-purple-800 text-white rounded-md transition-colors flex items-center gap-1.5 shadow-sm"
                   >
                     <Camera className="w-3.5 h-3.5" />
                     <span>Launch Live Mirror</span>
@@ -235,9 +237,8 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
               </div>
 
               {/* Viewport Area */}
-              <div className="relative h-80 sm:h-96 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden flex items-center justify-center">
+              <div className="relative h-80 sm:h-96 bg-slate-950 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center shadow-inner">
                 {cameraActive ? (
-                  /* Live Camera Feed */
                   <video
                     ref={videoRef}
                     autoPlay
@@ -247,15 +248,15 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
                   />
                 ) : (
                   /* Stylized Neutral Portrait Silhouette Canvas */
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-slate-900 via-slate-950 to-black">
-                    <div className="w-32 h-44 rounded-[50px] border-2 border-dashed border-slate-700/80 flex items-center justify-center opacity-40 relative">
-                      <div className="w-2 h-2 rounded-full bg-sky-400 absolute top-12 left-8" />
-                      <div className="w-2 h-2 rounded-full bg-sky-400 absolute top-12 right-8" />
-                      <div className="w-8 h-1 bg-slate-600 rounded-full absolute bottom-12" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#1E1B4B] via-[#0F172A] to-slate-950">
+                    <div className="w-32 h-44 rounded-[50px] border-2 border-dashed border-purple-300/40 flex items-center justify-center opacity-50 relative">
+                      <div className="w-2 h-2 rounded-full bg-purple-300 absolute top-12 left-8" />
+                      <div className="w-2 h-2 rounded-full bg-purple-300 absolute top-12 right-8" />
+                      <div className="w-8 h-1 bg-purple-400/50 rounded-full absolute bottom-12" />
                     </div>
-                    <div className="relative z-10 mt-4 max-w-xs">
-                      <span className="text-xs font-bold text-white block">Camera Standby</span>
-                      <p className="text-[11px] text-slate-400 mt-1">
+                    <div className="relative z-10 mt-4 max-w-xs text-white">
+                      <span className="text-xs font-bold block">Camera Standby</span>
+                      <p className="text-[11px] text-purple-200/80 mt-1">
                         Click 'Launch Live Mirror' to see this frame directly on your face with instant reflection!
                       </p>
                     </div>
@@ -278,33 +279,33 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
                 </div>
 
                 {/* Overlaid Info */}
-                <div className="absolute bottom-3 left-3 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded border border-slate-800 text-[11px] font-mono text-slate-300 pointer-events-none">
-                  Trying: <span className="text-amber-400 font-bold">{activeFrame.name}</span>
+                <div className="absolute bottom-3 left-3 bg-slate-950/85 backdrop-blur-md px-2.5 py-1 rounded border border-slate-800 text-[11px] font-mono text-slate-200 pointer-events-none">
+                  Trying: <span className="text-amber-300 font-bold">{activeFrame.name}</span>
                 </div>
               </div>
 
               {cameraError && (
-                <div className="mt-2 p-2 bg-rose-950/40 border border-rose-800/60 rounded text-xs text-rose-300 flex items-center gap-2">
+                <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded text-xs text-rose-700 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{cameraError}</span>
                 </div>
               )}
 
               {/* Position & Scale Adjusters */}
-              <div className="mt-4 p-3 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-between gap-4">
+              <div className="mt-4 p-3 bg-purple-50/60 rounded-xl border border-purple-100 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-slate-400">Scale:</span>
+                  <span className="text-[11px] font-mono text-slate-600">Scale:</span>
                   <button
                     onClick={() => setFrameScale((s) => Math.max(0.7, s - 0.05))}
-                    className="p-1 text-slate-300 bg-slate-800 hover:bg-slate-700 rounded"
+                    className="p-1 text-slate-700 bg-white hover:bg-slate-100 border border-purple-200 rounded"
                     title="Scale Down"
                   >
                     <ZoomOut className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-xs font-mono text-white">{frameScale.toFixed(2)}x</span>
+                  <span className="text-xs font-mono font-bold text-purple-800">{frameScale.toFixed(2)}x</span>
                   <button
                     onClick={() => setFrameScale((s) => Math.min(1.4, s + 0.05))}
-                    className="p-1 text-slate-300 bg-slate-800 hover:bg-slate-700 rounded"
+                    className="p-1 text-slate-700 bg-white hover:bg-slate-100 border border-purple-200 rounded"
                     title="Scale Up"
                   >
                     <ZoomIn className="w-3.5 h-3.5" />
@@ -312,24 +313,24 @@ export const VirtualTryOnGuide: React.FC<Props> = ({ onSelectFrame }) => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-slate-400">Nose Height:</span>
+                  <span className="text-[11px] font-mono text-slate-600">Nose Height:</span>
                   <input
                     type="range"
                     min="-40"
                     max="40"
                     value={frameOffsetY}
                     onChange={(e) => setFrameOffsetY(Number(e.target.value))}
-                    className="w-24 accent-sky-400 cursor-pointer h-1.5 bg-slate-800 rounded"
+                    className="w-24 accent-purple-700 cursor-pointer h-1.5 bg-purple-200 rounded"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
               <span>All camera frames remain 100% on-device and private.</span>
               <button
                 onClick={() => onSelectFrame(activeFrame)}
-                className="text-amber-400 hover:underline font-semibold"
+                className="text-purple-700 hover:underline font-bold"
               >
                 Configure & Order This Frame →
               </button>
