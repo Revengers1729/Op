@@ -39,6 +39,12 @@ export interface EyewearItem {
   features: string[];
   inStock: boolean;
   isPopular?: boolean;
+  gender?: 'men' | 'women' | 'unisex' | 'kids';
+  category?: 'eyeglasses' | 'sunglasses' | 'screen' | 'reading';
+  rating?: number;
+  reviewsCount?: number;
+  size?: 'Narrow' | 'Medium' | 'Wide';
+  brand?: string;
 }
 
 export type LensTypeId = 
