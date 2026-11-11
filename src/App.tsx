@@ -18,9 +18,12 @@ import { EyeTestBookingModal } from './components/EyeTestBookingModal';
 import { PincodeModal } from './components/PincodeModal';
 import { LenskartBottomNav } from './components/LenskartBottomNav';
 import { FloatingHelpButton } from './components/FloatingHelpButton';
+import { AdminModal } from './components/AdminModal';
 import { LegalModals, PolicyType } from './components/LegalModals';
 import { CookieBanner } from './components/CookieBanner';
 import { Footer } from './components/Footer';
+import { storageService, CategoryItem } from './services/storageService';
+import { supabaseService } from './services/supabaseService';
 
 export default function App() {
   // Cart state persisted in localStorage
@@ -59,12 +62,79 @@ export default function App() {
   // Active Bottom Navigation Tab (Home, Stores, AR Try on, Eye Test, Orders)
   const [activeBottomTab, setActiveBottomTab] = useState<string>('home');
 
+  // Dynamic Catalog, Categories & Lenses loaded from storageService
+  const [catalogItems, setCatalogItems] = useState<EyewearItem[]>(() => storageService.getProducts());
+  const [categoriesList, setCategoriesList] = useState<CategoryItem[]>(() => storageService.getCategories());
+  const [lensPackages, setLensPackages] = useState<LensOption[]>(() => storageService.getLensPackages());
+
   // Modal states
   const [selectedItemForCustomizer, setSelectedItemForCustomizer] = useState<EyewearItem | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isEyeTestOpen, setIsEyeTestOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activePolicy, setActivePolicy] = useState<PolicyType>(null);
   const [notification, setNotification] = useState<string | null>(null);
+
+  const refreshDynamicData = async () => {
+    try {
+      const [cloudProducts, cloudCats, cloudLenses] = await Promise.all([
+        supabaseService.fetchProducts(),
+        supabaseService.fetchCategories(),
+        supabaseService.fetchLensPackages(),
+      ]);
+
+      if (cloudProducts && cloudProducts.length > 0) {
+        setCatalogItems(cloudProducts);
+        storageService.saveProducts(cloudProducts);
+      } else {
+        setCatalogItems(storageService.getProducts());
+      }
+
+      if (cloudCats && cloudCats.length > 0) {
+        setCategoriesList(cloudCats);
+        storageService.saveCategories(cloudCats);
+      } else {
+        setCategoriesList(storageService.getCategories());
+      }
+
+      if (cloudLenses && cloudLenses.length > 0) {
+        setLensPackages(cloudLenses);
+        storageService.saveLensPackages(cloudLenses);
+      } else {
+        setLensPackages(storageService.getLensPackages());
+      }
+    } catch (err) {
+      console.warn('Error syncing cloud catalog, fallback to local:', err);
+      setCatalogItems(storageService.getProducts());
+      setCategoriesList(storageService.getCategories());
+      setLensPackages(storageService.getLensPackages());
+    }
+  };
+
+  // Sync Supabase Cloud catalog globally on mount & listen to realtime changes
+  useEffect(() => {
+    refreshDynamicData();
+
+    const channel = supabaseService.subscribeToAllChanges(() => {
+      refreshDynamicData();
+    });
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
+
+  // Keyboard shortcut: Ctrl + Shift + A to open Admin Panel directly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setIsAdminOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Sync cart to localStorage
   useEffect(() => {
@@ -271,9 +341,10 @@ export default function App() {
         onOpenTryOn={handleOpenTryOn}
         onBookAppointment={() => setIsEyeTestOpen(true)}
         onOpenPincodeModal={() => setIsPincodeModalOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         currentPincode={currentPincode}
         currentCity={currentCity}
-        catalogItems={CATALOG_ITEMS}
+        catalogItems={catalogItems}
         onSelectCategory={handleSelectCategory}
         onSelectProduct={(item) => setSelectedItemForCustomizer(item)}
       />
@@ -292,6 +363,7 @@ export default function App() {
         <LenskartCategoryStrip
           selectedCategory={activeCategory}
           onSelectCategory={handleSelectCategory}
+          categoriesList={categoriesList}
         />
 
         {/* 4. SHOP BY SHAPE SECTION (From user's video) */}
@@ -316,6 +388,7 @@ export default function App() {
           onOpenCustomizer={(item) => setSelectedItemForCustomizer(item)}
           wishlistIds={wishlistIds}
           onToggleWishlist={handleToggleWishlist}
+          items={catalogItems}
           externalFilter={externalFilter}
           onClearExternalFilter={() => setExternalFilter(null)}
         />
@@ -397,10 +470,11 @@ export default function App() {
 
       </main>
 
-      {/* 11. FOOTER (Multi-column Lenskart hierarchy + credentials) */}
+      {/* 11. FOOTER (Multi-column Lenskart hierarchy + credentials + Admin Login) */}
       <Footer
         onOpenPolicy={(policy) => setActivePolicy(policy)}
         onBookAppointment={() => setIsEyeTestOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
       {/* 12. LENSKART MOBILE BOTTOM DOCK (Exact match to user's mobile screenshot) */}
@@ -441,12 +515,13 @@ export default function App() {
         onClearCart={handleClearCart}
       />
 
-      {/* 16. PRODUCT CUSTOMIZER MODAL */}
+      {/* 16. PRODUCT CUSTOMIZER MODAL WITH DYNAMIC LENSES */}
       {selectedItemForCustomizer && (
         <ProductCustomizerModal
           item={selectedItemForCustomizer}
           isOpen={Boolean(selectedItemForCustomizer)}
           onClose={() => setSelectedItemForCustomizer(null)}
+          lensOptions={lensPackages}
           onAddToCart={handleAddFromCustomizer}
         />
       )}
@@ -457,13 +532,20 @@ export default function App() {
         onClose={() => setIsEyeTestOpen(false)}
       />
 
-      {/* 18. LEGAL MODALS (Privacy Policy, Terms of Service, 7-Day Refund, Cookie Policy) */}
+      {/* 18. ADMIN PORTAL CMS (Password: anand@12345) */}
+      <AdminModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        onCatalogUpdated={refreshDynamicData}
+      />
+
+      {/* 19. LEGAL MODALS (Privacy Policy, Terms of Service, 7-Day Refund, Cookie Policy) */}
       <LegalModals
         activePolicy={activePolicy}
         onClose={() => setActivePolicy(null)}
       />
 
-      {/* 19. COOKIE CONSENT BANNER */}
+      {/* 20. COOKIE CONSENT BANNER */}
       <CookieBanner onOpenPolicy={(policy) => setActivePolicy(policy)} />
 
     </div>

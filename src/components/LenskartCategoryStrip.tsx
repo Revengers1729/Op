@@ -4,13 +4,21 @@ import { Sparkles, Eye, ShieldCheck, Sun, Laptop } from 'lucide-react';
 interface Props {
   selectedCategory: string;
   onSelectCategory: (category: string, filterType?: 'gender' | 'shape' | 'category' | 'tier') => void;
+  categoriesList?: Array<{
+    id: string;
+    label: string;
+    sublabel?: string;
+    type?: 'gender' | 'category' | 'tier' | 'shape';
+    imageUrl?: string;
+  }>;
 }
 
 export const LenskartCategoryStrip: React.FC<Props> = ({
   selectedCategory,
   onSelectCategory,
+  categoriesList,
 }) => {
-  const categories = [
+  const defaultCategories = [
     {
       id: 'men',
       label: 'Men',
@@ -55,6 +63,8 @@ export const LenskartCategoryStrip: React.FC<Props> = ({
     },
   ];
 
+  const activeCategories = (categoriesList && categoriesList.length > 0) ? categoriesList : defaultCategories;
+
   return (
     <section className="w-full bg-white py-6 border-b border-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -74,13 +84,13 @@ export const LenskartCategoryStrip: React.FC<Props> = ({
             onClick={() => onSelectCategory('all')}
             className="text-xs font-bold text-purple-700 hover:text-purple-900 transition-colors"
           >
-            View All ({categories.length}+ categories) →
+            View All ({activeCategories.length}+ categories) →
           </button>
         </div>
 
         {/* Horizontal Scrolling Avatar Cards (Exact match to user screenshot) */}
         <div className="flex items-center gap-4 sm:gap-6 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => {
+          {activeCategories.map((cat) => {
             const isSelected = selectedCategory === cat.id;
 
             return (

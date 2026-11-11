@@ -8,6 +8,7 @@ interface Props {
   item: EyewearItem;
   isOpen: boolean;
   onClose: () => void;
+  lensOptions?: LensOption[];
   onAddToCart: (
     item: EyewearItem,
     color: EyewearColor,
@@ -21,10 +22,11 @@ export const ProductCustomizerModal: React.FC<Props> = ({
   item,
   isOpen,
   onClose,
+  lensOptions = LENS_OPTIONS,
   onAddToCart,
 }) => {
   const [selectedColor, setSelectedColor] = useState<EyewearColor>(item.colors[0]);
-  const [selectedLens, setSelectedLens] = useState<LensOption>(LENS_OPTIONS[1]); // Default to Single Vision AR or Blue Cut
+  const [selectedLens, setSelectedLens] = useState<LensOption>(lensOptions[1] || lensOptions[0] || LENS_OPTIONS[1]);
   const [powerMode, setPowerMode] = useState<'later' | 'custom' | 'upload_wa'>('upload_wa');
   const [rightEye, setRightEye] = useState('');
   const [leftEye, setLeftEye] = useState('');
@@ -178,7 +180,7 @@ export const ProductCustomizerModal: React.FC<Props> = ({
               </div>
 
               <div className="space-y-2">
-                {LENS_OPTIONS.map((lens) => (
+                {lensOptions.map((lens) => (
                   <button
                     key={lens.id}
                     onClick={() => setSelectedLens(lens)}

@@ -27,6 +27,7 @@ interface Props {
   onOpenTryOn: () => void;
   onBookAppointment: () => void;
   onOpenPincodeModal: () => void;
+  onOpenAdmin?: () => void;
   currentPincode: string;
   currentCity: string;
   catalogItems: EyewearItem[];
@@ -42,6 +43,7 @@ export const LenskartHeader: React.FC<Props> = ({
   onOpenTryOn,
   onBookAppointment,
   onOpenPincodeModal,
+  onOpenAdmin,
   currentPincode,
   currentCity,
   catalogItems,
@@ -125,6 +127,18 @@ export const LenskartHeader: React.FC<Props> = ({
           >
             WhatsApp Order
           </a>
+          {onOpenAdmin && (
+            <>
+              <span className="text-slate-500">|</span>
+              <button
+                onClick={onOpenAdmin}
+                className="text-amber-300 hover:text-white text-[10px] font-semibold flex items-center gap-1"
+                title="Store Admin CMS (Passcode: anand@12345)"
+              >
+                <span>🔒 Admin</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

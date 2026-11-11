@@ -25,6 +25,27 @@ export const EyeTestBookingModal: React.FC<Props> = ({ isOpen, onClose }) => {
       confetti({ particleCount: 60, spread: 50, origin: { y: 0.6 }, colors: ['#7c3aed', '#6366f1', '#10b981'] });
     } catch (e) {}
 
+    // Save appointment in Admin CMS localStorage & Supabase Cloud
+    import('../services/storageService').then(({ storageService }) => {
+      storageService.saveAppointment({
+        name: fullName,
+        phone,
+        date: preferredDate || new Date().toISOString().split('T')[0],
+        timeSlot: preferredTime,
+        reason: service,
+      });
+    }).catch(() => {});
+
+    import('../services/supabaseService').then(({ supabaseService }) => {
+      supabaseService.insertAppointment({
+        name: fullName,
+        phone,
+        date: preferredDate || new Date().toISOString().split('T')[0],
+        timeSlot: preferredTime,
+        reason: service,
+      });
+    }).catch(() => {});
+
     let text = `*CLINICAL APPOINTMENT BOOKING - ANAND OPTICAL*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `👤 *Patient Name:* ${fullName}\n`;

@@ -9,6 +9,7 @@ interface Props {
   onOpenCustomizer: (item: EyewearItem) => void;
   wishlistIds: string[];
   onToggleWishlist: (id: string) => void;
+  items?: EyewearItem[];
   externalFilter?: { type: 'gender' | 'shape' | 'category' | 'tier'; value: string } | null;
   onClearExternalFilter?: () => void;
 }
@@ -18,9 +19,11 @@ export const CatalogSection: React.FC<Props> = ({
   onOpenCustomizer,
   wishlistIds,
   onToggleWishlist,
+  items,
   externalFilter,
   onClearExternalFilter,
 }) => {
+  const currentCatalog = (items && items.length > 0) ? items : CATALOG_ITEMS;
   const [selectedTier, setSelectedTier] = useState<string>('all');
   const [selectedShape, setSelectedShape] = useState<string>('all');
   const [selectedGender, setSelectedGender] = useState<string>('all');
@@ -50,7 +53,7 @@ export const CatalogSection: React.FC<Props> = ({
   }, [externalFilter]);
 
   const filteredItems = useMemo(() => {
-    return CATALOG_ITEMS.filter((item) => {
+    return currentCatalog.filter((item) => {
       // Tier filter
       if (selectedTier !== 'all' && item.tier !== selectedTier) return false;
       // Shape filter

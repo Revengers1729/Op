@@ -5,9 +5,10 @@ import { PolicyType } from './LegalModals';
 interface Props {
   onOpenPolicy: (type: PolicyType) => void;
   onBookAppointment: () => void;
+  onOpenAdmin?: () => void;
 }
 
-export const Footer: React.FC<Props> = ({ onOpenPolicy, onBookAppointment }) => {
+export const Footer: React.FC<Props> = ({ onOpenPolicy, onBookAppointment, onOpenAdmin }) => {
   return (
     <footer className="bg-gradient-to-b from-[#0A1938] via-[#141B4B] to-[#1E0942] border-t border-purple-500/25 text-purple-200/80 text-xs">
       {/* Upper Footer Grid */}
@@ -144,6 +145,16 @@ export const Footer: React.FC<Props> = ({ onOpenPolicy, onBookAppointment }) => 
             >
               Cookie Policy
             </button>
+            <span aria-hidden="true" className="text-purple-500/40">·</span>
+            {onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                className="hover:text-amber-300 font-semibold text-purple-200 transition-colors flex items-center gap-1"
+                title="Store Staff & Owner Login"
+              >
+                <span>🔒 Admin Login</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
