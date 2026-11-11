@@ -251,6 +251,7 @@ export const supabaseService = {
               reviewsCount: Number(row.reviews_count || 110),
               size: row.size || 'Medium',
               brand: cleanBrand,
+              imageUrl: row.image_url || row.imageUrl || '',
             };
           });
       }

@@ -157,12 +157,20 @@ export const OrderTrayDrawer: React.FC<Props> = ({
                   className="p-4 bg-white rounded-xl border border-purple-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-20 h-14 bg-[#FAF8FD] rounded-lg border border-purple-100 flex items-center justify-center shrink-0">
-                      <EyewearGraphic
-                        shape={ci.item.shape}
-                        color={ci.selectedColor}
-                        className="w-full h-full"
-                      />
+                    <div className="w-20 h-14 bg-[#FAF8FD] rounded-lg border border-purple-100 flex items-center justify-center shrink-0 overflow-hidden p-1">
+                      {ci.item.imageUrl ? (
+                        <img
+                          src={ci.item.imageUrl}
+                          alt={ci.item.name}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <EyewearGraphic
+                          shape={ci.item.shape}
+                          color={ci.selectedColor}
+                          className="w-full h-full"
+                        />
+                      )}
                     </div>
 
                     <div>

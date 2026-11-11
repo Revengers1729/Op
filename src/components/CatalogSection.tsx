@@ -280,17 +280,42 @@ export const CatalogSection: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Eyewear Graphic Canvas Area */}
+                  {/* Eyewear Visual Area: Real Photo or Architectural Graphic */}
                   <div
                     onClick={() => onOpenCustomizer(item)}
-                    className="relative my-4 py-3 cursor-pointer bg-[#FAF8FD] rounded-xl border border-purple-50 group-hover:bg-purple-50/70 transition-colors"
+                    className="relative my-4 py-2 px-3 cursor-pointer bg-[#FAF8FD] rounded-xl border border-purple-50 group-hover:bg-purple-50/70 transition-colors flex items-center justify-center min-h-[148px] overflow-hidden"
                   >
-                    <EyewearGraphic
-                      shape={item.shape}
-                      color={defaultColor}
-                      className="w-full h-36"
-                      isHovered={isHovered}
-                    />
+                    {item.imageUrl ? (
+                      <div className="w-full h-36 flex items-center justify-center">
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="max-h-36 max-w-full object-contain filter group-hover:scale-105 transition-transform duration-300 drop-shadow-sm rounded-lg"
+                          loading="lazy"
+                          onError={(e) => {
+                            // If user image cannot load, hide image and show graphic
+                            (e.target as HTMLElement).style.display = 'none';
+                            const fb = document.getElementById(`fallback-graphic-${item.id}`);
+                            if (fb) fb.style.display = 'block';
+                          }}
+                        />
+                        <div id={`fallback-graphic-${item.id}`} style={{ display: 'none' }} className="w-full h-full">
+                          <EyewearGraphic
+                            shape={item.shape}
+                            color={defaultColor}
+                            className="w-full h-36"
+                            isHovered={isHovered}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <EyewearGraphic
+                        shape={item.shape}
+                        color={defaultColor}
+                        className="w-full h-36"
+                        isHovered={isHovered}
+                      />
+                    )}
 
                     {/* Weight / Feature Tag */}
                     <div className="absolute bottom-2 right-2 text-[10px] font-mono text-purple-800 bg-white/95 px-2 py-0.5 rounded-md border border-purple-200 shadow-xs">

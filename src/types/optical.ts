@@ -45,6 +45,7 @@ export interface EyewearItem {
   reviewsCount?: number;
   size?: 'Narrow' | 'Medium' | 'Wide';
   brand?: string;
+  imageUrl?: string;
 }
 
 export type LensTypeId = 

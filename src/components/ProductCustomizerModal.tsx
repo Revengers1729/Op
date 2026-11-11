@@ -101,19 +101,40 @@ export const ProductCustomizerModal: React.FC<Props> = ({
           {/* Left Preview Column */}
           <div className="md:col-span-5 p-6 bg-[#FAF8FD] flex flex-col justify-between border-b md:border-b-0 md:border-r border-purple-100">
             <div>
-              <div className="h-48 sm:h-56 bg-white rounded-xl border border-purple-100 p-4 flex items-center justify-center shadow-xs">
-                <EyewearGraphic
-                  shape={item.shape}
-                  color={selectedColor}
-                  className="w-full h-full"
-                  lensTint={
-                    selectedLens.id === 'polarized_sun'
-                      ? 'rgba(15, 23, 42, 0.75)'
-                      : selectedLens.id === 'blue_cut_shield'
-                      ? 'rgba(124, 58, 237, 0.15)'
-                      : 'rgba(255, 255, 255, 0.08)'
-                  }
-                />
+              <div className="h-48 sm:h-56 bg-white rounded-xl border border-purple-100 p-4 flex items-center justify-center shadow-xs overflow-hidden relative">
+                {item.imageUrl ? (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="max-h-full max-w-full object-contain filter drop-shadow-sm"
+                    />
+                    {/* Visual lens tint preview overlay on real photo */}
+                    {selectedLens.id === 'polarized_sun' && (
+                      <div className="absolute inset-0 bg-slate-900/40 pointer-events-none rounded-lg flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded">UV400 Polarized Tint</span>
+                      </div>
+                    )}
+                    {selectedLens.id === 'blue_cut_shield' && (
+                      <div className="absolute inset-0 bg-purple-500/10 pointer-events-none rounded-lg flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-purple-900 bg-white/80 px-2 py-0.5 rounded shadow-xs">420nm Blue Shield</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <EyewearGraphic
+                    shape={item.shape}
+                    color={selectedColor}
+                    className="w-full h-full"
+                    lensTint={
+                      selectedLens.id === 'polarized_sun'
+                        ? 'rgba(15, 23, 42, 0.75)'
+                        : selectedLens.id === 'blue_cut_shield'
+                        ? 'rgba(124, 58, 237, 0.15)'
+                        : 'rgba(255, 255, 255, 0.08)'
+                    }
+                  />
+                )}
               </div>
 
               {/* Color Swatches */}

@@ -242,22 +242,63 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     setPasswordInput('');
   };
 
-  // Image Upload using standard FileReader (no canvas distortion / 2MB limit)
+  // Image Upload with intelligent auto-compression for fast Supabase Cloud sync
   const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      showToast(`Photo too large (${(file.size / (1024 * 1024)).toFixed(2)} MB). Please select an image under 2MB.`);
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('Photo is too large. Please select a photo under 15MB.');
       e.target.value = '';
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {
-      const base64 = uploadEvent.target?.result as string;
-      setProductForm((prev) => ({ ...prev, imagePreview: base64 }));
-      showToast('✓ Photo loaded successfully from device!');
+      const rawDataUrl = uploadEvent.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+            setProductForm((prev) => ({ ...prev, imagePreview: optimizedBase64 }));
+            showToast('✓ Photo ready & optimized for instant cloud sync!');
+          } else {
+            setProductForm((prev) => ({ ...prev, imagePreview: rawDataUrl }));
+            showToast('✓ Photo loaded successfully!');
+          }
+        } catch {
+          setProductForm((prev) => ({ ...prev, imagePreview: rawDataUrl }));
+          showToast('✓ Photo loaded!');
+        }
+      };
+      img.onerror = () => {
+        setProductForm((prev) => ({ ...prev, imagePreview: rawDataUrl }));
+        showToast('✓ Photo loaded!');
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };
@@ -399,10 +440,8 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
           description: productForm.description.trim(),
           inStock: productForm.inStock,
           isPopular: productForm.isPopular,
+          imageUrl: productForm.imagePreview.trim(),
         };
-        if (productForm.imagePreview) {
-          (updatedItem as any).imageUrl = productForm.imagePreview;
-        }
 
         showToast(`Updating "${updatedItem.name}" in Supabase Cloud...`);
         const ok = await supabaseService.upsertProduct(updatedItem);
@@ -447,10 +486,8 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
           reviewsCount: 1,
           size: 'Medium',
           brand: productForm.brand.trim() || 'Anand Signature',
+          imageUrl: productForm.imagePreview.trim(),
         };
-        if (productForm.imagePreview) {
-          (newItem as any).imageUrl = productForm.imagePreview;
-        }
 
         showToast(`Publishing "${newItem.name}" to Supabase Cloud...`);
         const ok = await supabaseService.upsertProduct(newItem);
@@ -1843,12 +1880,12 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                   </div>
                 </div>
 
-                {/* Image Upload from Phone Camera or Gallery */}
+                {/* Image Upload from Phone Camera or Gallery + URL Option */}
                 <div className="p-4 bg-purple-50/50 border border-purple-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-slate-800 flex items-center gap-2">
                       <Camera className="w-4 h-4 text-purple-700" />
-                      <span>Upload Frame Photo (Phone Gallery or PC, under 2MB)</span>
+                      <span>Upload Frame Photo (Phone Camera, Gallery, or PC)</span>
                     </label>
                     {productForm.imagePreview && (
                       <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -1862,6 +1899,16 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                     onChange={handleImageFileSelect}
                     className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-700 file:text-white hover:file:bg-purple-800 cursor-pointer"
                   />
+                  <div>
+                    <label className="text-[11px] text-slate-600 block mb-1">Or paste Image URL directly:</label>
+                    <input
+                      type="text"
+                      value={productForm.imagePreview.startsWith('data:') ? '' : productForm.imagePreview}
+                      onChange={(e) => setProductForm({ ...productForm, imagePreview: e.target.value.trim() })}
+                      placeholder="https://images.unsplash.com/... or online image link"
+                      className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
                   {productForm.imagePreview && (
                     <div className="mt-2 flex items-center gap-4 bg-white p-2.5 rounded-lg border border-purple-100">
                       <img
