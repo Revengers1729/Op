@@ -168,11 +168,9 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
         supabaseService.fetchAppointments(),
       ]);
 
-      if (cloudProducts && cloudProducts.length > 0) {
+      if (Array.isArray(cloudProducts)) {
         setProducts(cloudProducts);
         storageService.saveProducts(cloudProducts);
-      } else {
-        setProducts(storageService.getProducts());
       }
 
       if (cloudCats && cloudCats.length > 0) {

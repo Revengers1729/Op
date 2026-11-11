@@ -23,7 +23,7 @@ export const CatalogSection: React.FC<Props> = ({
   externalFilter,
   onClearExternalFilter,
 }) => {
-  const currentCatalog = (items && items.length > 0) ? items : CATALOG_ITEMS;
+  const currentCatalog = items ?? [];
   const [selectedTier, setSelectedTier] = useState<string>('all');
   const [selectedShape, setSelectedShape] = useState<string>('all');
   const [selectedGender, setSelectedGender] = useState<string>('all');
@@ -281,19 +281,19 @@ export const CatalogSection: React.FC<Props> = ({
                   </div>
 
                   {/* Eyewear Visual Area: Real Photo or Architectural Graphic */}
+                  {/* Eyewear Visual Area: Stable Isolated Display */}
                   <div
                     onClick={() => onOpenCustomizer(item)}
-                    className="relative my-4 py-2 px-3 cursor-pointer bg-[#FAF8FD] rounded-xl border border-purple-50 group-hover:bg-purple-50/70 transition-colors flex items-center justify-center min-h-[148px] overflow-hidden"
+                    className="relative my-4 p-3 cursor-pointer bg-white rounded-xl border border-purple-100 group-hover:border-purple-300 transition-colors flex items-center justify-center h-40 overflow-hidden"
                   >
                     {item.imageUrl ? (
-                      <div className="w-full h-36 flex items-center justify-center">
+                      <div className="w-full h-full flex items-center justify-center p-1">
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="max-h-36 max-w-full object-contain filter group-hover:scale-105 transition-transform duration-300 drop-shadow-sm rounded-lg"
+                          className="max-h-full max-w-full object-contain mx-auto"
                           loading="lazy"
                           onError={(e) => {
-                            // If user image cannot load, hide image and show graphic
                             (e.target as HTMLElement).style.display = 'none';
                             const fb = document.getElementById(`fallback-graphic-${item.id}`);
                             if (fb) fb.style.display = 'block';

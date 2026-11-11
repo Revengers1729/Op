@@ -71,9 +71,9 @@ export const storageService = {
   getProducts(): EyewearItem[] {
     try {
       const data = localStorage.getItem(KEY_PRODUCTS);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }

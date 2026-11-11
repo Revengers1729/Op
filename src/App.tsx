@@ -83,11 +83,9 @@ export default function App() {
         supabaseService.fetchLensPackages(),
       ]);
 
-      if (cloudProducts && cloudProducts.length > 0) {
+      if (Array.isArray(cloudProducts)) {
         setCatalogItems(cloudProducts);
         storageService.saveProducts(cloudProducts);
-      } else {
-        setCatalogItems(storageService.getProducts());
       }
 
       if (cloudCats && cloudCats.length > 0) {
