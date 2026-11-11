@@ -263,25 +263,36 @@ export const supabaseService = {
   // UPSERT PRODUCT (Add or Update globally in Supabase Cloud)
   async upsertProduct(product: EyewearItem): Promise<boolean> {
     try {
+      const colorsPayload = Array.isArray(product.colors) && product.colors.length > 0
+        ? product.colors.map((c: any) => (typeof c === 'string' ? c : (c?.name || 'Classic Black')))
+        : ['Classic Matte Black', 'Gunmetal Silver'];
+
+      let dimStr = '52-18-142 mm';
+      if (typeof product.dimensions === 'string') {
+        dimStr = product.dimensions;
+      } else if (product.dimensions && typeof product.dimensions === 'object') {
+        dimStr = `${product.dimensions.lensWidth || 52}-${product.dimensions.bridge || 18}-${product.dimensions.temple || 142} mm`;
+      }
+
+      const imgUrl = (product as any).imageUrl || (product as any).imagePreview || 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=800&q=80';
+
       const payload: any = {
         id: product.id,
-        name: product.name.trim(),
+        name: (product.name || 'Anand Optical Frame').trim(),
         brand: product.brand ? product.brand.trim() : 'Anand Signature',
         category: product.category || 'eyeglasses',
         shape: product.shape || 'rectangle',
         material: product.material || 'TR90 Ultra-Flex Polymer',
-        price: Number(product.price),
-        original_price: Number(product.originalPrice || Math.round(product.price * 1.5)),
+        price: Number(product.price) || 1499,
+        original_price: Number(product.originalPrice || Math.round((Number(product.price) || 1499) * 1.5)),
         badge: product.isPopular ? 'Bestseller' : (product.tags?.[0] || 'Verified'),
-        in_stock: Boolean(product.inStock),
-        image_url: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=800&q=80',
-        description: product.description || 'Precision optical frame with pressure-free ergonomics.',
+        in_stock: product.inStock !== undefined ? Boolean(product.inStock) : true,
+        image_url: imgUrl,
+        description: (product.description || 'Precision optical frame with pressure-free ergonomics.').trim(),
         gender: product.gender || 'unisex',
-        dimensions: typeof product.dimensions === 'string'
-          ? product.dimensions
-          : `${product.dimensions.lensWidth}-${product.dimensions.bridge}-${product.dimensions.temple} mm`,
-        colors: product.colors.map((c) => c.name),
-        features: product.features && product.features.length > 0 ? product.features : ['1-Year Store Warranty'],
+        dimensions: dimStr,
+        colors: colorsPayload,
+        features: Array.isArray(product.features) && product.features.length > 0 ? product.features : ['1-Year Store Warranty'],
       };
 
       const { error } = await supabase

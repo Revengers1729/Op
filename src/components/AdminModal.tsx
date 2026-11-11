@@ -79,6 +79,16 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
   // UI Toast
   const [toast, setToast] = useState<string | null>(null);
 
+  // Dedicated Product Modal & Confirmation Dialog State (Replaces blocked window.confirm/alert)
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+
   // Edit / Add Product Form State
   const [editingProduct, setEditingProduct] = useState<EyewearItem | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -238,7 +248,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert(`The selected photo is too large (${(file.size / (1024 * 1024)).toFixed(2)} MB). Please select an image under 2MB.`);
+      showToast(`Photo too large (${(file.size / (1024 * 1024)).toFixed(2)} MB). Please select an image under 2MB.`);
       e.target.value = '';
       return;
     }
@@ -247,7 +257,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     reader.onload = (uploadEvent) => {
       const base64 = uploadEvent.target?.result as string;
       setProductForm((prev) => ({ ...prev, imagePreview: base64 }));
-      showToast('Photo loaded successfully from device!');
+      showToast('✓ Photo loaded successfully from device!');
     };
     reader.readAsDataURL(file);
   };
@@ -260,40 +270,60 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     );
     setProducts(updated);
     storageService.saveProducts(updated);
-    showToast(`Updating cloud status for ${product.name}...`);
-    await supabaseService.toggleStock(product.id, newStock);
-    onCatalogUpdated();
-    showToast(`${product.name} is now ${newStock ? 'In Stock ✓' : 'Sold Out ✕'} globally!`);
+    showToast(`Saving ${product.name} to Supabase Cloud...`);
+    const ok = await supabaseService.toggleStock(product.id, newStock);
+    if (ok) {
+      onCatalogUpdated();
+      showToast(`✓ ${product.name} is now ${newStock ? 'In Stock' : 'Sold Out'} globally!`);
+    } else {
+      showToast(`✕ Failed to update stock in Supabase`);
+    }
   };
 
   // Quick Price Update (Saves to Supabase Cloud globally)
   const handleQuickPriceChange = async (product: EyewearItem, newPriceStr: string) => {
     const priceNum = parseInt(newPriceStr, 10);
     if (isNaN(priceNum) || priceNum <= 0) return;
+    if (product.price === priceNum) return;
     const updatedItem = { ...product, price: priceNum };
     const updated = products.map((it) =>
       it.id === product.id ? updatedItem : it
     );
     setProducts(updated);
     storageService.saveProducts(updated);
-    await supabaseService.upsertProduct(updatedItem);
-    onCatalogUpdated();
-    showToast(`Price updated to ₹${priceNum} globally!`);
+    showToast(`Saving ₹${priceNum} to Supabase Cloud...`);
+    const ok = await supabaseService.upsertProduct(updatedItem);
+    if (ok) {
+      onCatalogUpdated();
+      showToast(`✓ Price updated to ₹${priceNum} globally!`);
+    } else {
+      showToast(`✕ Error saving price to Supabase`);
+    }
   };
 
-  // Delete Product (Deletes from Supabase Cloud globally)
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}" from the store catalog globally?`)) return;
-    const updated = products.filter((it) => it.id !== id);
-    setProducts(updated);
-    storageService.saveProducts(updated);
-    showToast(`Deleting ${name} from Supabase Cloud...`);
-    await supabaseService.deleteProduct(id);
-    onCatalogUpdated();
-    showToast(`Deleted ${name} from cloud catalog!`);
+  // Delete Product (Deletes from Supabase Cloud globally without blocked window.confirm)
+  const handleDeleteProduct = (id: string, name: string) => {
+    setConfirmModal({
+      title: 'Delete Frame from Supabase Cloud?',
+      message: `Are you sure you want to delete "${name}"? It will be removed from the cloud database and your website instantly.`,
+      confirmLabel: 'Delete from Cloud',
+      onConfirm: async () => {
+        showToast(`Deleting ${name} from Supabase Cloud...`);
+        const ok = await supabaseService.deleteProduct(id);
+        if (ok) {
+          const updated = products.filter((it) => it.id !== id);
+          setProducts(updated);
+          storageService.saveProducts(updated);
+          onCatalogUpdated();
+          showToast(`✓ Deleted "${name}" from Supabase Cloud!`);
+        } else {
+          showToast(`✕ Could not delete "${name}" from Supabase`);
+        }
+      },
+    });
   };
 
-  // Open Edit Product
+  // Open Edit Product in Dedicated Modal
   const handleOpenEditProduct = (item: EyewearItem) => {
     setEditingProduct(item);
     setIsAddingProduct(false);
@@ -312,11 +342,12 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       description: item.description,
       inStock: item.inStock,
       isPopular: item.isPopular || false,
-      imagePreview: '',
+      imagePreview: (item as any).imageUrl || '',
     });
+    setIsProductModalOpen(true);
   };
 
-  // Open Add Product
+  // Open Add Product in Dedicated Modal
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
     setIsAddingProduct(true);
@@ -337,93 +368,125 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       isPopular: false,
       imagePreview: '',
     });
+    setIsProductModalOpen(true);
   };
 
   // Save Product (Add or Edit in Supabase Cloud globally)
   const handleSaveProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.name.trim()) {
-      alert('Please enter frame name');
+      showToast('Please enter frame name');
       return;
     }
 
-    if (editingProduct) {
-      // Update existing
-      const updatedItem: EyewearItem = {
-        ...editingProduct,
-        name: productForm.name.trim(),
-        code: productForm.code.trim(),
-        brand: productForm.brand.trim() || 'Anand Signature',
-        tier: productForm.tier,
-        shape: productForm.shape,
-        gender: productForm.gender,
-        category: productForm.category,
-        price: Number(productForm.price),
-        originalPrice: Number(productForm.originalPrice),
-        material: productForm.material.trim(),
-        weightGrams: Number(productForm.weightGrams),
-        description: productForm.description.trim(),
-        inStock: productForm.inStock,
-        isPopular: productForm.isPopular,
-      };
-      const updatedList = products.map((it) => (it.id === editingProduct.id ? updatedItem : it));
-      setProducts(updatedList);
-      storageService.saveProducts(updatedList);
-      setEditingProduct(null);
-      showToast(`Saving "${updatedItem.name}" to Supabase Cloud...`);
-      await supabaseService.upsertProduct(updatedItem);
-      onCatalogUpdated();
-      showToast(`Updated "${updatedItem.name}" globally for all users!`);
-    } else {
-      // Add new product
-      const newId = `ao-frame-${Date.now()}`;
-      const newItem: EyewearItem = {
-        id: newId,
-        name: productForm.name.trim(),
-        code: productForm.code.trim() || `AO-${Date.now().toString().slice(-4)}`,
-        tier: productForm.tier,
-        shape: productForm.shape,
-        material: productForm.material.trim(),
-        weightGrams: Number(productForm.weightGrams) || 12,
-        price: Number(productForm.price),
-        originalPrice: Number(productForm.originalPrice) || Number(productForm.price) * 1.8,
-        dimensions: { lensWidth: 52, bridge: 18, temple: 142 },
-        colors: [
-          { name: 'Classic Matte Black', hex: '#18181B', rimColor: '#27272A', templeColor: '#09090B' },
-          { name: 'Royal Cobalt', hex: '#1E3A8A', rimColor: '#2563EB', templeColor: '#0F172A' },
-        ],
-        tags: ['New Arrival', 'Anand Quality Verified'],
-        bestForFace: ['Oval', 'Round', 'Square'],
-        description: productForm.description.trim(),
-        features: ['Precision-machined hinges', 'Hypoallergenic soft bridge', '1-year warranty'],
-        inStock: productForm.inStock,
-        isPopular: productForm.isPopular,
-        gender: productForm.gender,
-        category: productForm.category,
-        rating: 4.9,
-        reviewsCount: 1,
-        size: 'Medium',
-        brand: productForm.brand.trim() || 'Anand Signature',
-      };
-      const updatedList = [newItem, ...products];
-      setProducts(updatedList);
-      storageService.saveProducts(updatedList);
-      setIsAddingProduct(false);
-      showToast(`Publishing "${newItem.name}" to Supabase Cloud...`);
-      await supabaseService.upsertProduct(newItem);
-      onCatalogUpdated();
-      showToast(`Added frame "${newItem.name}" globally!`);
+    setIsSavingProduct(true);
+    try {
+      if (editingProduct) {
+        // Update existing
+        const updatedItem: EyewearItem = {
+          ...editingProduct,
+          name: productForm.name.trim(),
+          code: productForm.code.trim(),
+          brand: productForm.brand.trim() || 'Anand Signature',
+          tier: productForm.tier,
+          shape: productForm.shape,
+          gender: productForm.gender,
+          category: productForm.category,
+          price: Number(productForm.price),
+          originalPrice: Number(productForm.originalPrice),
+          material: productForm.material.trim(),
+          weightGrams: Number(productForm.weightGrams),
+          description: productForm.description.trim(),
+          inStock: productForm.inStock,
+          isPopular: productForm.isPopular,
+        };
+        if (productForm.imagePreview) {
+          (updatedItem as any).imageUrl = productForm.imagePreview;
+        }
+
+        showToast(`Updating "${updatedItem.name}" in Supabase Cloud...`);
+        const ok = await supabaseService.upsertProduct(updatedItem);
+        if (ok) {
+          const updatedList = products.map((it) => (it.id === editingProduct.id ? updatedItem : it));
+          setProducts(updatedList);
+          storageService.saveProducts(updatedList);
+          onCatalogUpdated();
+          setIsProductModalOpen(false);
+          setEditingProduct(null);
+          showToast(`✓ Updated "${updatedItem.name}" in Supabase Cloud!`);
+        } else {
+          showToast(`✕ Error saving frame to Supabase`);
+        }
+      } else {
+        // Add new product
+        const newId = `ao-frame-${Date.now()}`;
+        const newItem: EyewearItem = {
+          id: newId,
+          name: productForm.name.trim(),
+          code: productForm.code.trim() || `AO-${Date.now().toString().slice(-4)}`,
+          tier: productForm.tier,
+          shape: productForm.shape,
+          material: productForm.material.trim(),
+          weightGrams: Number(productForm.weightGrams) || 12,
+          price: Number(productForm.price),
+          originalPrice: Number(productForm.originalPrice) || Number(productForm.price) * 1.8,
+          dimensions: { lensWidth: 52, bridge: 18, temple: 142 },
+          colors: [
+            { name: 'Classic Matte Black', hex: '#18181B', rimColor: '#27272A', templeColor: '#09090B' },
+            { name: 'Royal Cobalt', hex: '#1E3A8A', rimColor: '#2563EB', templeColor: '#0F172A' },
+          ],
+          tags: ['New Arrival', 'Anand Quality Verified'],
+          bestForFace: ['Oval', 'Round', 'Square'],
+          description: productForm.description.trim(),
+          features: ['Precision-machined hinges', 'Hypoallergenic soft bridge', '1-year warranty'],
+          inStock: productForm.inStock,
+          isPopular: productForm.isPopular,
+          gender: productForm.gender,
+          category: productForm.category,
+          rating: 4.9,
+          reviewsCount: 1,
+          size: 'Medium',
+          brand: productForm.brand.trim() || 'Anand Signature',
+        };
+        if (productForm.imagePreview) {
+          (newItem as any).imageUrl = productForm.imagePreview;
+        }
+
+        showToast(`Publishing "${newItem.name}" to Supabase Cloud...`);
+        const ok = await supabaseService.upsertProduct(newItem);
+        if (ok) {
+          const updatedList = [newItem, ...products];
+          setProducts(updatedList);
+          storageService.saveProducts(updatedList);
+          onCatalogUpdated();
+          setIsProductModalOpen(false);
+          setIsAddingProduct(false);
+          showToast(`✓ Added "${newItem.name}" to Supabase Cloud!`);
+        } else {
+          showToast(`✕ Error adding frame to Supabase`);
+        }
+      }
+    } catch (err: any) {
+      showToast(`✕ Save error: ${err?.message || 'Failed'}`);
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
   // Reset to default catalog
   const handleResetCatalog = () => {
-    if (confirm('Are you sure you want to reset the catalog to default 12 Anand Optical frames? All newly added custom frames will be removed.')) {
-      const def = storageService.resetProducts();
-      setProducts(def);
-      onCatalogUpdated();
-      showToast('Catalog restored to default showroom frames.');
-    }
+    setConfirmModal({
+      title: 'Reset to Showroom Defaults?',
+      message: 'Are you sure you want to restore the 12 original Anand Optical frames in the cloud? All custom added frames will be replaced.',
+      confirmLabel: 'Reset Defaults',
+      onConfirm: async () => {
+        showToast('Restoring showroom frames...');
+        const res = await supabaseService.seedDefaultFramesToCloud();
+        await loadAllData();
+        onCatalogUpdated();
+        showToast(res.message);
+      },
+    });
   };
 
   // CATEGORIES MANAGEMENT (Globally synced to Supabase Cloud)
@@ -432,7 +495,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     if (!newCatLabel.trim()) return;
     const catId = newCatLabel.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
     if (categories.some((c) => c.id === catId)) {
-      alert('A category with this name already exists.');
+      showToast('A category with this name already exists.');
       return;
     }
     const newCat: CategoryItem = {
@@ -449,18 +512,24 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     setNewCatSublabel('');
     await supabaseService.saveAllCategories(updated);
     onCatalogUpdated();
-    showToast(`Category "${newCat.label}" added globally!`);
+    showToast(`✓ Category "${newCat.label}" added globally!`);
   };
 
-  const handleDeleteCategory = async (id: string, label: string) => {
-    if (!confirm(`Delete category "${label}" globally?`)) return;
-    const updated = categories.filter((c) => c.id !== id);
-    setCategories(updated);
-    storageService.saveCategories(updated);
-    await supabaseService.saveAllCategories(updated);
-    await supabaseService.deleteCategory(id);
-    onCatalogUpdated();
-    showToast(`Category "${label}" removed globally.`);
+  const handleDeleteCategory = (id: string, label: string) => {
+    setConfirmModal({
+      title: 'Delete Category from Cloud?',
+      message: `Delete category "${label}"? It will be removed from navigation and filters globally.`,
+      confirmLabel: 'Delete Category',
+      onConfirm: async () => {
+        const updated = categories.filter((c) => c.id !== id);
+        setCategories(updated);
+        storageService.saveCategories(updated);
+        await supabaseService.saveAllCategories(updated);
+        await supabaseService.deleteCategory(id);
+        onCatalogUpdated();
+        showToast(`✓ Category "${label}" removed globally.`);
+      },
+    });
   };
 
   // LENSES MANAGEMENT (Globally synced to Supabase Cloud)
@@ -506,7 +575,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       storageService.saveLensPackages(updatedList);
       setEditingLens(null);
       await supabaseService.saveAllLensPackages(updatedList);
-      showToast(`Updated lens package "${updatedLens.name}" globally!`);
+      showToast(`✓ Updated lens package "${updatedLens.name}" globally!`);
     } else {
       const newLensId = `lens-${Date.now()}` as any;
       const newLens: LensOption = {
@@ -522,22 +591,28 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       storageService.saveLensPackages(updatedList);
       setIsAddingLens(false);
       await supabaseService.saveAllLensPackages(updatedList);
-      showToast(`Added lens package "${newLens.name}" globally!`);
+      showToast(`✓ Added lens package "${newLens.name}" globally!`);
     }
   };
 
-  const handleDeleteLens = async (id: string, name: string) => {
+  const handleDeleteLens = (id: string, name: string) => {
     if (lenses.length <= 1) {
-      alert('You must keep at least 1 lens option.');
+      showToast('You must keep at least 1 lens option.');
       return;
     }
-    if (!confirm(`Delete lens package "${name}" globally?`)) return;
-    const updated = lenses.filter((it) => it.id !== id);
-    setLenses(updated);
-    storageService.saveLensPackages(updated);
-    await supabaseService.saveAllLensPackages(updated);
-    await supabaseService.deleteLensPackage(id);
-    showToast(`Removed lens package "${name}" globally.`);
+    setConfirmModal({
+      title: 'Delete Lens Package from Cloud?',
+      message: `Are you sure you want to delete "${name}" from the store's optical lens lab globally?`,
+      confirmLabel: 'Delete Lens',
+      onConfirm: async () => {
+        const updated = lenses.filter((it) => it.id !== id);
+        setLenses(updated);
+        storageService.saveLensPackages(updated);
+        await supabaseService.saveAllLensPackages(updated);
+        await supabaseService.deleteLensPackage(id);
+        showToast(`✓ Removed lens package "${name}" globally.`);
+      },
+    });
   };
 
   // APPOINTMENTS (Globally synced to Supabase Cloud)
@@ -573,18 +648,24 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     }
   };
 
-  const handleSeedDefaultFrames = async () => {
-    if (!confirm('Sync default showroom frames to Supabase Cloud? This will ensure all customer devices see them.')) return;
-    setIsCloudLoading(true);
-    const result = await supabaseService.seedDefaultFramesToCloud();
-    setIsCloudLoading(false);
-    if (result.success) {
-      loadAllData();
-      onCatalogUpdated();
-      showToast(result.message);
-    } else {
-      showToast(`Sync error: ${result.message}`);
-    }
+  const handleSeedDefaultFrames = () => {
+    setConfirmModal({
+      title: 'Sync Showroom Frames to Cloud?',
+      message: 'This will ensure all 12 signature showroom frames are saved in Supabase Cloud for all customer devices.',
+      confirmLabel: 'Sync to Cloud',
+      onConfirm: async () => {
+        setIsCloudLoading(true);
+        const result = await supabaseService.seedDefaultFramesToCloud();
+        setIsCloudLoading(false);
+        if (result.success) {
+          await loadAllData();
+          onCatalogUpdated();
+          showToast(result.message);
+        } else {
+          showToast(`Sync error: ${result.message}`);
+        }
+      },
+    });
   };
 
   const handleCleanseBrandNames = async () => {
@@ -592,7 +673,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     const result = await supabaseService.cleanseLegacyNamesInCloud();
     setIsCloudLoading(false);
     if (result.count > 0) {
-      loadAllData();
+      await loadAllData();
       onCatalogUpdated();
       showToast(`✓ Cleaned ${result.count} items in Cloud to Anand Optical!`);
     } else {
@@ -619,17 +700,17 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminPass || newAdminPass.length < 4) {
-      alert('Password must be at least 4 characters');
+      showToast('Password must be at least 4 characters');
       return;
     }
     if (newAdminPass !== confirmAdminPass) {
-      alert('New password and confirmation do not match');
+      showToast('New password and confirmation do not match');
       return;
     }
     storageService.saveAdminPassword(newAdminPass);
     setNewAdminPass('');
     setConfirmAdminPass('');
-    showToast('Admin password successfully updated!');
+    showToast('✓ Admin password successfully updated!');
   };
 
   if (!isOpen) return null;
@@ -852,234 +933,15 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                     </div>
                   </div>
 
-                  {/* Add / Edit Frame Form Modal Card */}
-                  {(isAddingProduct || editingProduct) && (
-                    <div className="bg-white rounded-2xl border-2 border-purple-300 p-6 shadow-xl animate-fade-in">
-                      <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
-                        <h5 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                          <Edit2 className="w-4 h-4 text-purple-700" />
-                          <span>{editingProduct ? `Edit Frame: ${editingProduct.name}` : 'Add New Eyewear Frame'}</span>
-                        </h5>
-                        <button
-                          onClick={() => { setIsAddingProduct(false); setEditingProduct(null); }}
-                          className="p-1 text-slate-400 hover:text-slate-700 rounded"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <form onSubmit={handleSaveProductSubmit} className="space-y-4 text-xs">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Frame Name *</label>
-                            <input
-                              type="text"
-                              value={productForm.name}
-                              onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                              placeholder="e.g. Anand Titanium Aero"
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Model Code *</label>
-                            <input
-                              type="text"
-                              value={productForm.code}
-                              onChange={(e) => setProductForm({ ...productForm, code: e.target.value })}
-                              placeholder="e.g. AO-TITAN-09"
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-purple-600"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Brand Name</label>
-                            <input
-                              type="text"
-                              value={productForm.brand}
-                              onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
-                              placeholder="e.g. Vincent Chase, John Jacobs, Anand"
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Selling Price (₹) *</label>
-                            <input
-                              type="number"
-                              value={productForm.price}
-                              onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-purple-900 focus:outline-none focus:border-purple-600"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Original MRP (₹)</label>
-                            <input
-                              type="number"
-                              value={productForm.originalPrice}
-                              onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-500 line-through focus:outline-none focus:border-purple-600"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Shape</label>
-                            <select
-                              value={productForm.shape}
-                              onChange={(e) => setProductForm({ ...productForm, shape: e.target.value as FrameShape })}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 capitalize"
-                            >
-                              {['rectangle', 'round', 'aviator', 'wayfarer', 'clubmaster', 'cat-eye', 'hexagonal', 'rimless'].map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Gender</label>
-                            <select
-                              value={productForm.gender}
-                              onChange={(e) => setProductForm({ ...productForm, gender: e.target.value as any })}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 capitalize"
-                            >
-                              <option value="unisex">Unisex</option>
-                              <option value="men">Men</option>
-                              <option value="women">Women</option>
-                              <option value="kids">Kids</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Material</label>
-                            <input
-                              type="text"
-                              value={productForm.material}
-                              onChange={(e) => setProductForm({ ...productForm, material: e.target.value })}
-                              placeholder="e.g. Japanese Beta-Titanium"
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Category</label>
-                            <select
-                              value={productForm.category}
-                              onChange={(e) => setProductForm({ ...productForm, category: e.target.value as any })}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 capitalize"
-                            >
-                              <option value="eyeglasses">Eyeglasses (Power)</option>
-                              <option value="sunglasses">Sunglasses</option>
-                              <option value="screen">Computer / Blue Cut</option>
-                              <option value="reading">Reading</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="font-bold text-slate-700 block mb-1">Weight (grams)</label>
-                            <input
-                              type="number"
-                              value={productForm.weightGrams}
-                              onChange={(e) => setProductForm({ ...productForm, weightGrams: Number(e.target.value) })}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Image Upload from Phone Camera or Gallery (Standard FileReader, under 2MB) */}
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                          <label className="font-bold text-slate-800 flex items-center gap-2">
-                            <Camera className="w-4 h-4 text-purple-700" />
-                            <span>Upload Frame Photo from Phone Gallery / PC (Under 2MB)</span>
-                          </label>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageFileSelect}
-                            className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-800 hover:file:bg-purple-200 cursor-pointer"
-                          />
-                          {productForm.imagePreview && (
-                            <div className="mt-2 flex items-center gap-3">
-                              <img
-                                src={productForm.imagePreview}
-                                alt="Preview"
-                                className="w-16 h-12 object-cover rounded-lg border border-purple-200 shadow-xs"
-                              />
-                              <span className="text-[11px] text-emerald-600 font-bold">✓ Ready to display on website</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                          <label className="font-bold text-slate-700 block mb-1">Description</label>
-                          <textarea
-                            rows={2}
-                            value={productForm.description}
-                            onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                          />
-                        </div>
-
-                        {/* Toggles */}
-                        <div className="flex items-center gap-6 pt-1">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={productForm.inStock}
-                              onChange={(e) => setProductForm({ ...productForm, inStock: e.target.checked })}
-                              className="w-4 h-4 accent-purple-700"
-                            />
-                            <span className="font-bold text-slate-800">In Stock for Immediate Order</span>
-                          </label>
-
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={productForm.isPopular}
-                              onChange={(e) => setProductForm({ ...productForm, isPopular: e.target.checked })}
-                              className="w-4 h-4 accent-purple-700"
-                            />
-                            <span className="font-bold text-slate-800">Show Bestseller Badge</span>
-                          </label>
-                        </div>
-
-                        {/* Submit Buttons */}
-                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => { setIsAddingProduct(false); setEditingProduct(null); }}
-                            className="px-4 py-2 text-slate-600 hover:text-slate-900 font-semibold"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl shadow-md transition-colors"
-                          >
-                            {editingProduct ? 'Save Frame Changes' : 'Publish Frame to Website'}
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
                   {/* Products Table */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                           <tr>
-                            <th className="p-3.5">Frame</th>
+                            <th className="p-3.5">Frame Photo & Info</th>
                             <th className="p-3.5">Brand & Shape</th>
-                            <th className="p-3.5">Selling Price</th>
+                            <th className="p-3.5">Selling Price (Cloud)</th>
                             <th className="p-3.5">Stock Status (1-Click)</th>
                             <th className="p-3.5 text-right">Actions</th>
                           </tr>
@@ -1089,8 +951,12 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                             <tr key={item.id} className="hover:bg-purple-50/40 transition-colors">
                               <td className="p-3.5">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-mono text-[10px] font-bold text-slate-600 shrink-0">
-                                    {item.shape.slice(0, 3).toUpperCase()}
+                                  <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-mono text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
+                                    {(item as any).imageUrl ? (
+                                      <img src={(item as any).imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      item.shape.slice(0, 3).toUpperCase()
+                                    )}
                                   </div>
                                   <div>
                                     <span className="font-bold text-slate-900 block">{item.name}</span>
@@ -1109,24 +975,41 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                                   <span className="font-bold text-slate-900">₹</span>
                                   <input
                                     type="number"
+                                    id={`quick-price-${item.id}`}
                                     defaultValue={item.price}
-                                    onBlur={(e) => handleQuickPriceChange(item, e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleQuickPriceChange(item, (e.target as HTMLInputElement).value);
+                                      }
+                                    }}
                                     className="w-20 px-2 py-1 text-xs font-bold border border-slate-200 rounded focus:border-purple-600 focus:outline-none"
-                                    title="Edit price and click away to save"
+                                    title="Edit price and press Enter or click checkmark to save"
                                   />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const input = document.getElementById(`quick-price-${item.id}`) as HTMLInputElement;
+                                      if (input) handleQuickPriceChange(item, input.value);
+                                    }}
+                                    className="p-1 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded border border-emerald-200 transition-colors"
+                                    title="Save new price to Supabase Cloud globally"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                                 <span className="text-[10px] text-slate-400 line-through">MRP: ₹{item.originalPrice}</span>
                               </td>
 
                               <td className="p-3.5">
                                 <button
+                                  type="button"
                                   onClick={() => handleToggleStock(item)}
                                   className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
                                     item.inStock
                                       ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                                       : 'bg-red-100 text-red-800 hover:bg-red-200'
                                   }`}
-                                  title="Click to toggle Stock Status"
+                                  title="Click to toggle Stock Status globally"
                                 >
                                   {item.inStock ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
                                   <span>{item.inStock ? '✓ In Stock' : '✕ Sold Out'}</span>
@@ -1136,18 +1019,22 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                               <td className="p-3.5 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
+                                    type="button"
                                     onClick={() => handleOpenEditProduct(item)}
-                                    className="p-1.5 text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
-                                    title="Edit Frame"
+                                    className="p-2 text-purple-700 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs"
+                                    title="Edit Frame Details & Photo"
                                   >
                                     <Edit2 className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Edit</span>
                                   </button>
                                   <button
+                                    type="button"
                                     onClick={() => handleDeleteProduct(item.id, item.name)}
-                                    className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                    title="Delete Frame"
+                                    className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs"
+                                    title="Delete Frame from Supabase Cloud"
                                   >
                                     <Trash2 className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Delete</span>
                                   </button>
                                 </div>
                               </td>
@@ -1796,6 +1683,300 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                 </div>
               )}
 
+            </div>
+          </div>
+        )}
+
+        {/* ================= DEDICATED PRODUCT EDIT / ADD OVERLAY MODAL ================= */}
+        {isProductModalOpen && (
+          <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-purple-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-fade-in">
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-gradient-to-r from-purple-900 to-indigo-900 text-white shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-purple-200">
+                    <Edit2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="font-extrabold text-sm sm:text-base">
+                      {editingProduct ? `Edit Frame: ${editingProduct.name}` : 'Add New Frame to Supabase Cloud'}
+                    </h5>
+                    <p className="text-[11px] text-purple-200">
+                      Changes update Supabase Cloud immediately and display globally
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProductModalOpen(false);
+                    setEditingProduct(null);
+                    setIsAddingProduct(false);
+                  }}
+                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProductSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Frame Name *</label>
+                    <input
+                      type="text"
+                      value={productForm.name}
+                      onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                      placeholder="e.g. Anand Titanium Aero"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 font-semibold"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Model Code *</label>
+                    <input
+                      type="text"
+                      value={productForm.code}
+                      onChange={(e) => setProductForm({ ...productForm, code: e.target.value })}
+                      placeholder="e.g. AO-TITAN-09"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-purple-600"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Brand Name</label>
+                    <input
+                      type="text"
+                      value={productForm.brand}
+                      onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                      placeholder="e.g. Anand Signature, John Jacobs"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Selling Price (₹) *</label>
+                    <input
+                      type="number"
+                      value={productForm.price}
+                      onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-purple-900 focus:outline-none focus:border-purple-600 text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Original MRP (₹)</label>
+                    <input
+                      type="number"
+                      value={productForm.originalPrice}
+                      onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-500 line-through focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Frame Shape</label>
+                    <select
+                      value={productForm.shape}
+                      onChange={(e) => setProductForm({ ...productForm, shape: e.target.value as FrameShape })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 capitalize font-medium"
+                    >
+                      {['rectangle', 'round', 'aviator', 'wayfarer', 'clubmaster', 'cat-eye', 'hexagonal', 'rimless'].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Gender</label>
+                    <select
+                      value={productForm.gender}
+                      onChange={(e) => setProductForm({ ...productForm, gender: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 capitalize font-medium"
+                    >
+                      <option value="unisex">Unisex</option>
+                      <option value="men">Men</option>
+                      <option value="women">Women</option>
+                      <option value="kids">Kids</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Material</label>
+                    <input
+                      type="text"
+                      value={productForm.material}
+                      onChange={(e) => setProductForm({ ...productForm, material: e.target.value })}
+                      placeholder="e.g. Swiss TR90, Beta-Titanium"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Category</label>
+                    <select
+                      value={productForm.category}
+                      onChange={(e) => setProductForm({ ...productForm, category: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 capitalize font-medium"
+                    >
+                      <option value="eyeglasses">Eyeglasses (Power)</option>
+                      <option value="sunglasses">Sunglasses</option>
+                      <option value="screen">Computer / Blue Cut</option>
+                      <option value="reading">Reading</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Weight (grams)</label>
+                    <input
+                      type="number"
+                      value={productForm.weightGrams}
+                      onChange={(e) => setProductForm({ ...productForm, weightGrams: Number(e.target.value) })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Image Upload from Phone Camera or Gallery */}
+                <div className="p-4 bg-purple-50/50 border border-purple-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800 flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-purple-700" />
+                      <span>Upload Frame Photo (Phone Gallery or PC, under 2MB)</span>
+                    </label>
+                    {productForm.imagePreview && (
+                      <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        ✓ Photo Ready
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileSelect}
+                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-700 file:text-white hover:file:bg-purple-800 cursor-pointer"
+                  />
+                  {productForm.imagePreview && (
+                    <div className="mt-2 flex items-center gap-4 bg-white p-2.5 rounded-lg border border-purple-100">
+                      <img
+                        src={productForm.imagePreview}
+                        alt="Preview"
+                        className="w-20 h-14 object-cover rounded-md border border-purple-200 shadow-xs"
+                      />
+                      <div className="text-[11px] space-y-0.5">
+                        <span className="text-slate-800 font-bold block">Live Image Preview</span>
+                        <span className="text-slate-500 block">Will be displayed on the card and detail view</span>
+                        <button
+                          type="button"
+                          onClick={() => setProductForm({ ...productForm, imagePreview: '' })}
+                          className="text-red-600 hover:text-red-700 font-bold"
+                        >
+                          Remove Photo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={productForm.description}
+                    onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    placeholder="Comfortable lightweight frame with durable spring hinges..."
+                  />
+                </div>
+
+                {/* Toggles */}
+                <div className="flex flex-wrap items-center gap-6 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.inStock}
+                      onChange={(e) => setProductForm({ ...productForm, inStock: e.target.checked })}
+                      className="w-4 h-4 accent-purple-700 rounded"
+                    />
+                    <span className="font-bold text-slate-800">In Stock for Immediate Order</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={productForm.isPopular}
+                      onChange={(e) => setProductForm({ ...productForm, isPopular: e.target.checked })}
+                      className="w-4 h-4 accent-purple-700 rounded"
+                    />
+                    <span className="font-bold text-slate-800">Show Bestseller Badge</span>
+                  </label>
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProductModalOpen(false);
+                      setEditingProduct(null);
+                      setIsAddingProduct(false);
+                    }}
+                    className="px-4 py-2 text-slate-600 hover:text-slate-900 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProduct}
+                    className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl shadow-md transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSavingProduct && <RefreshCw className="w-4 h-4 animate-spin text-white" />}
+                    <span>{isSavingProduct ? 'Saving to Supabase Cloud...' : editingProduct ? 'Save Changes to Cloud' : 'Publish Frame to Website'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= DEDICATED CONFIRMATION MODAL ================= */}
+        {confirmModal && (
+          <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center gap-3 text-red-600">
+                <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <h4 className="font-extrabold text-slate-900 text-base">{confirmModal.title}</h4>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">{confirmModal.message}</p>
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const cb = confirmModal.onConfirm;
+                    setConfirmModal(null);
+                    await cb();
+                  }}
+                  className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors"
+                >
+                  {confirmModal.confirmLabel || 'Confirm Delete'}
+                </button>
+              </div>
             </div>
           </div>
         )}
