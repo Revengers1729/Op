@@ -39,6 +39,7 @@ import {
   supabaseService,
   DEFAULT_SUPABASE_URL,
   DEFAULT_SUPABASE_ANON_KEY,
+  getStudioEyewearImage,
 } from '../services/supabaseService';
 
 interface Props {
@@ -538,7 +539,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       label: newCatLabel.trim(),
       type: newCatType,
       sublabel: newCatSublabel.trim() || 'Custom Collection',
-      imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=300&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
     };
     const updated = [...categories, newCat];
     setCategories(updated);
@@ -986,9 +987,15 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                             <tr key={item.id} className="hover:bg-purple-50/40 transition-colors">
                               <td className="p-3.5">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-mono text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden">
+                                  <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-mono text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden p-1 shadow-xs">
                                     {(item as any).imageUrl ? (
-                                      <img src={(item as any).imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                      <img
+                                        src={(item as any).imageUrl}
+                                        alt={item.name}
+                                        referrerPolicy="no-referrer"
+                                        crossOrigin="anonymous"
+                                        className="w-full h-full object-contain"
+                                      />
                                     ) : (
                                       item.shape.slice(0, 3).toUpperCase()
                                     )}
@@ -1897,33 +1904,46 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                     onChange={handleImageFileSelect}
                     className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-700 file:text-white hover:file:bg-purple-800 cursor-pointer"
                   />
-                  <div>
-                    <label className="text-[11px] text-slate-600 block mb-1">Or paste Image URL directly:</label>
-                    <input
-                      type="text"
-                      value={productForm.imagePreview.startsWith('data:') ? '' : productForm.imagePreview}
-                      onChange={(e) => setProductForm({ ...productForm, imagePreview: e.target.value.trim() })}
-                      placeholder="https://images.unsplash.com/... or online image link"
-                      className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
-                    />
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const standardUrl = getStudioEyewearImage(productForm.shape);
+                        setProductForm((prev) => ({ ...prev, imagePreview: standardUrl }));
+                        showToast(`✓ Set standard studio photo for ${productForm.shape}!`);
+                      }}
+                      className="px-3 py-1.5 bg-white text-purple-700 hover:bg-purple-100 rounded-lg border border-purple-300 font-bold text-[11px] transition-colors flex items-center gap-1 shadow-xs"
+                    >
+                      <span>✨ Use Standard Studio Photo ({productForm.shape})</span>
+                    </button>
+                    {productForm.imagePreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductForm((prev) => ({ ...prev, imagePreview: '' }));
+                          showToast('Photo removed (will use vector graphics)');
+                        }}
+                        className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg border border-red-200 font-bold text-[11px] transition-colors"
+                      >
+                        ✕ Remove Photo
+                      </button>
+                    )}
                   </div>
+
                   {productForm.imagePreview && (
-                    <div className="mt-2 flex items-center gap-4 bg-white p-2.5 rounded-lg border border-purple-100">
-                      <img
-                        src={productForm.imagePreview}
-                        alt="Preview"
-                        className="w-20 h-14 object-cover rounded-md border border-purple-200 shadow-xs"
-                      />
+                    <div className="mt-2 flex items-center gap-4 bg-white p-3 rounded-xl border border-purple-200 shadow-xs">
+                      <div className="w-24 h-16 bg-white rounded-lg border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
+                        <img
+                          src={productForm.imagePreview}
+                          alt="Preview"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
                       <div className="text-[11px] space-y-0.5">
-                        <span className="text-slate-800 font-bold block">Live Image Preview</span>
-                        <span className="text-slate-500 block">Will be displayed on the card and detail view</span>
-                        <button
-                          type="button"
-                          onClick={() => setProductForm({ ...productForm, imagePreview: '' })}
-                          className="text-red-600 hover:text-red-700 font-bold"
-                        >
-                          Remove Photo
-                        </button>
+                        <span className="text-slate-900 font-bold block">Live Frame Photo Ready</span>
+                        <span className="text-slate-500 block">Clean horizontal spectacles product photo</span>
                       </div>
                     </div>
                   )}

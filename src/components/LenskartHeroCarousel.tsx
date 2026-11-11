@@ -80,7 +80,7 @@ export const LenskartHeroCarousel: React.FC<Props> = ({
       bgGradient: 'from-[#050C1F] via-[#0E1A3D] to-[#251245]',
       badgeBg: 'bg-sky-500/20 text-sky-300 border border-sky-500/30',
       btnStyle: 'bg-purple-600 text-white hover:bg-purple-500',
-      imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=1000&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=1000&q=80',
     },
   ];
 
@@ -181,6 +181,8 @@ export const LenskartHeroCarousel: React.FC<Props> = ({
                 <img
                   src={slide.imageUrl}
                   alt={slide.title}
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">

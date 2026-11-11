@@ -30,6 +30,12 @@ export const CatalogSection: React.FC<Props> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  // Reset failed images when catalog items update
+  useEffect(() => {
+    setFailedImages({});
+  }, [items]);
 
   // Sync external filter from category strip or mega menu
   useEffect(() => {
@@ -284,35 +290,28 @@ export const CatalogSection: React.FC<Props> = ({
                   {/* Eyewear Visual Area: Stable Isolated Display */}
                   <div
                     onClick={() => onOpenCustomizer(item)}
-                    className="relative my-4 p-3 cursor-pointer bg-white rounded-xl border border-purple-100 group-hover:border-purple-300 transition-colors flex items-center justify-center h-40 overflow-hidden"
+                    className="relative my-4 p-3 cursor-pointer bg-white rounded-xl border border-purple-100 group-hover:border-purple-300 transition-all flex items-center justify-center h-44 overflow-hidden group-hover:shadow-xs"
                   >
-                    {item.imageUrl ? (
-                      <div className="w-full h-full flex items-center justify-center p-1">
+                    {item.imageUrl && !failedImages[item.id] ? (
+                      <div className="w-full h-full flex items-center justify-center p-1.5">
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="max-h-full max-w-full object-contain mx-auto"
                           loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                            const fb = document.getElementById(`fallback-graphic-${item.id}`);
-                            if (fb) fb.style.display = 'block';
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          className="max-h-full max-w-full object-contain mx-auto transition-transform duration-300 group-hover:scale-105 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.06)]"
+                          onError={() => {
+                            setFailedImages((prev) => ({ ...prev, [item.id]: true }));
                           }}
                         />
-                        <div id={`fallback-graphic-${item.id}`} style={{ display: 'none' }} className="w-full h-full">
-                          <EyewearGraphic
-                            shape={item.shape}
-                            color={defaultColor}
-                            className="w-full h-36"
-                            isHovered={isHovered}
-                          />
-                        </div>
                       </div>
                     ) : (
                       <EyewearGraphic
                         shape={item.shape}
                         color={defaultColor}
-                        className="w-full h-36"
+                        className="w-full h-40"
                         isHovered={isHovered}
                       />
                     )}

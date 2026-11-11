@@ -89,6 +89,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 142,
     size: 'Medium',
     brand: 'Anand Signature',
+    imageUrl: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'artisan-hexagonal-gold',
@@ -117,6 +118,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 98,
     size: 'Medium',
     brand: 'John Jacobs',
+    imageUrl: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'chrono-clubmaster-elite',
@@ -146,6 +148,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 185,
     size: 'Wide',
     brand: 'Vincent Chase',
+    imageUrl: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'veloce-carbon-aviator',
@@ -173,6 +176,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 114,
     size: 'Wide',
     brand: 'AeroTitan',
+    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=800&q=80',
   },
 
   // --- MIDDLE TIER (EXECUTIVE / WORKPLACE / CLINICAL BESTSELLERS) ---
@@ -204,6 +208,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 310,
     size: 'Medium',
     brand: 'Vincent Chase',
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'optima-round-acetate',
@@ -232,6 +237,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 88,
     size: 'Narrow',
     brand: 'John Jacobs',
+    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'zenith-half-rim-executive',
@@ -260,6 +266,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 156,
     size: 'Medium',
     brand: 'Anand Signature',
+    imageUrl: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'aura-cat-eye-elegance',
@@ -288,6 +295,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 220,
     size: 'Medium',
     brand: 'Vincent Chase',
+    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=800&q=80',
   },
 
   // --- BUDGET TIER (STURDY VALUE / STUDENTS / DAILY ROUGH WEAR) ---
@@ -319,6 +327,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 425,
     size: 'Medium',
     brand: 'Hustlr by Anand',
+    imageUrl: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'urban-scholar-crystal',
@@ -347,6 +356,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 195,
     size: 'Narrow',
     brand: 'Vincent Chase',
+    imageUrl: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'active-sport-wrap',
@@ -374,6 +384,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 130,
     size: 'Wide',
     brand: 'AeroTitan',
+    imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'junior-safeguard-kids',
@@ -402,6 +413,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 165,
     size: 'Narrow',
     brand: 'Hooper Kids',
+    imageUrl: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'hustlr-pro-screen',
@@ -431,6 +443,7 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 680,
     size: 'Medium',
     brand: 'Hustlr by Anand',
+    imageUrl: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
   },
   {
     id: 'retro-aviator-polar-sun',
@@ -459,5 +472,6 @@ export const CATALOG_ITEMS: EyewearItem[] = [
     reviewsCount: 340,
     size: 'Wide',
     brand: 'Vincent Chase',
+    imageUrl: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=800&q=80',
   },
 ];

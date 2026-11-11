@@ -45,7 +45,7 @@ export const LenskartCategoryStrip: React.FC<Props> = ({
       label: 'Starts @ ₹499',
       sublabel: 'Hustlr Eyewear',
       type: 'tier' as const,
-      imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=300&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
     },
     {
       id: 'screen',
@@ -116,6 +116,8 @@ export const LenskartCategoryStrip: React.FC<Props> = ({
                   <img
                     src={cat.imageUrl}
                     alt={cat.label}
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                     className="w-full h-full object-cover object-center rounded-[14px] group-hover:scale-110 transition-transform duration-500"
                   />
                 </div>

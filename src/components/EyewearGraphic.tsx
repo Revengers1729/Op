@@ -38,27 +38,32 @@ export const EyewearGraphic: React.FC<Props> = ({
         }}
       >
         <defs>
-          {/* Metallic / Acetate gradient */}
+          {/* Metallic / Acetate gradient with solid high-contrast opacity */}
           <linearGradient id={`frameGrad-${shape}-${color.name}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={rimStroke} stopOpacity="1" />
-            <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.4" />
+            <stop offset="50%" stopColor={color.hex || rimStroke} stopOpacity="1" />
             <stop offset="100%" stopColor={templeStroke} stopOpacity="1" />
           </linearGradient>
 
           {/* Optical anti-reflective green/cyan reflection sheen */}
           <linearGradient id={`lensReflection-${shape}`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="transparent" />
-            <stop offset="40%" stopColor="rgba(56, 189, 248, 0.25)" />
-            <stop offset="60%" stopColor="rgba(129, 140, 248, 0.3)" />
+            <stop offset="35%" stopColor="rgba(56, 189, 248, 0.35)" />
+            <stop offset="65%" stopColor="rgba(129, 140, 248, 0.35)" />
             <stop offset="100%" stopColor="transparent" />
           </linearGradient>
 
           {/* Glass glare line */}
           <linearGradient id="glareSweep" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
-            <stop offset="30%" stopColor="rgba(255,255,255,0.05)" />
+            <stop offset="0%" stopColor="rgba(255,255,255,0.7)" />
+            <stop offset="40%" stopColor="rgba(255,255,255,0.15)" />
             <stop offset="100%" stopColor="transparent" />
           </linearGradient>
+
+          {/* Realistic frame shadow */}
+          <filter id="softFrameShadow" x="-10%" y="-10%" width="120%" height="135%">
+            <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#0F172A" floodOpacity="0.2" />
+          </filter>
         </defs>
 
         {/* ================= SHAPE: ROUND ================= */}

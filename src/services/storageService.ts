@@ -37,7 +37,7 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
   { id: 'men', label: 'Men', type: 'gender', sublabel: 'Trending', imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80' },
   { id: 'women', label: 'Women', type: 'gender', sublabel: 'Designer', imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80' },
   { id: 'kids', label: 'Kids', type: 'gender', sublabel: 'Unbreakable', imageUrl: 'https://images.unsplash.com/photo-1519457431-44ccd64a579b?auto=format&fit=crop&w=300&q=80' },
-  { id: 'budget', label: 'Starts @ ₹499', type: 'tier', sublabel: 'Hustlr Eyewear', imageUrl: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=300&q=80' },
+  { id: 'budget', label: 'Starts @ ₹499', type: 'tier', sublabel: 'Hustlr Eyewear', imageUrl: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80' },
   { id: 'screen', label: 'Computer Lenses', type: 'category', sublabel: 'Zero Power 420nm', imageUrl: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=300&q=80' },
   { id: 'sunglasses', label: 'Sunglasses', type: 'category', sublabel: 'UV400 Polarized', imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=300&q=80' },
 ];

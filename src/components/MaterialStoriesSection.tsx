@@ -15,7 +15,7 @@ export const MaterialStoriesSection: React.FC<Props> = ({ onFilterMaterial }) =>
       weight: '7.8g Featherlight',
       features: ['Corrosion proof for life', 'Memory flex temples', 'Zero skin allergy / Hypoallergenic'],
       description: 'Milled from high-purity Japanese beta-titanium wire. So light you will forget you are wearing spectacles even after 16 hours at your computer workstation.',
-      image: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=800&q=80',
       keyword: 'Titanium',
     },
     acetate: {
@@ -146,6 +146,8 @@ export const MaterialStoriesSection: React.FC<Props> = ({ onFilterMaterial }) =>
               <img
                 src={mat.image}
                 alt={mat.name}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
                 className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
               />
             </div>

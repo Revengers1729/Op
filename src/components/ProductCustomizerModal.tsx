@@ -107,7 +107,9 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="max-h-full max-w-full object-contain filter drop-shadow-sm"
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
+                      className="max-h-full max-w-full object-contain filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.08)]"
                     />
                     {/* Visual lens tint preview overlay on real photo */}
                     {selectedLens.id === 'polarized_sun' && (

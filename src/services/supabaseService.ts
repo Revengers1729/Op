@@ -21,6 +21,26 @@ export const supabase: SupabaseClient = createClient(
   }
 );
 
+// High-res optical eyewear studio photo mapping by shape (Lenskart white background standard)
+export const SHAPE_STUDIO_IMAGE_MAP: Record<string, string> = {
+  rimless: 'https://images.unsplash.com/photo-1509695507497-903c140c43b0?auto=format&fit=crop&w=800&q=80',
+  hexagonal: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=800&q=80',
+  clubmaster: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=800&q=80',
+  aviator: 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=800&q=80',
+  wayfarer: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80',
+  round: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=800&q=80',
+  'cat-eye': 'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=800&q=80',
+  rectangle: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
+};
+
+export function getStudioEyewearImage(shape?: string, providedUrl?: string): string {
+  if (providedUrl && providedUrl.trim().length > 0 && !providedUrl.includes('photo-1591076482161-42ce6da69f67')) {
+    return providedUrl.trim();
+  }
+  const s = (shape || 'rectangle').toLowerCase();
+  return SHAPE_STUDIO_IMAGE_MAP[s] || SHAPE_STUDIO_IMAGE_MAP.rectangle;
+}
+
 // Fallback high-res optical imagery mapping
 const CATEGORY_IMAGE_MAP: Record<string, string> = {
   men: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
@@ -29,7 +49,7 @@ const CATEGORY_IMAGE_MAP: Record<string, string> = {
   bluecut: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=300&q=80',
   screen: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=300&q=80',
   sunglasses: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=300&q=80',
-  budget: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=300&q=80',
+  budget: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
   progressive: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
   reading: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
   'contact-lenses': 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=300&q=80',
@@ -251,7 +271,7 @@ export const supabaseService = {
               reviewsCount: Number(row.reviews_count || 110),
               size: row.size || 'Medium',
               brand: cleanBrand,
-              imageUrl: row.image_url || row.imageUrl || '',
+              imageUrl: getStudioEyewearImage(row.shape, row.image_url || row.imageUrl),
             };
           });
       }
@@ -275,7 +295,7 @@ export const supabaseService = {
         dimStr = `${product.dimensions.lensWidth || 52}-${product.dimensions.bridge || 18}-${product.dimensions.temple || 142} mm`;
       }
 
-      const imgUrl = (product as any).imageUrl || (product as any).imagePreview || 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=800&q=80';
+      const imgUrl = getStudioEyewearImage(product.shape, (product as any).imageUrl || (product as any).imagePreview);
 
       const payload: any = {
         id: product.id,
@@ -382,7 +402,7 @@ export const supabaseService = {
             label: c.label || c.id,
             type: c.type || (['men', 'women', 'kids'].includes(c.id) ? 'gender' : 'category'),
             sublabel: c.sublabel || (c.id === 'men' ? 'Trending' : c.id === 'women' ? 'Designer' : 'Collection'),
-            imageUrl: c.imageUrl || CATEGORY_IMAGE_MAP[c.id] || 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=300&q=80',
+            imageUrl: c.imageUrl || CATEGORY_IMAGE_MAP[c.id] || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
           }));
         }
       }
@@ -420,7 +440,7 @@ export const supabaseService = {
         price: 0,
         original_price: 0,
         in_stock: false,
-        image_url: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67',
+        image_url: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
         description: jsonStr,
         gender: 'unisex',
         dimensions: '52-18-140 mm',
@@ -518,7 +538,7 @@ export const supabaseService = {
         price: 0,
         original_price: 0,
         in_stock: false,
-        image_url: 'https://images.unsplash.com/photo-1591076482161-42ce6da69f67',
+        image_url: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
         description: jsonStr,
         gender: 'unisex',
         dimensions: '52-18-140 mm',
