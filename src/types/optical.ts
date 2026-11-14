@@ -27,6 +27,7 @@ export interface EyewearItem {
   weightGrams: number;
   price: number;
   originalPrice: number;
+  mrp?: number;
   dimensions: {
     lensWidth: number; // mm
     bridge: number;    // mm
@@ -38,6 +39,7 @@ export interface EyewearItem {
   description: string;
   features: string[];
   inStock: boolean;
+  isAvailable?: boolean;
   isPopular?: boolean;
   gender?: 'men' | 'women' | 'unisex' | 'kids';
   category?: 'eyeglasses' | 'sunglasses' | 'screen' | 'reading';

@@ -147,7 +147,6 @@ export const MaterialStoriesSection: React.FC<Props> = ({ onFilterMaterial }) =>
                 src={mat.image}
                 alt={mat.name}
                 referrerPolicy="no-referrer"
-                crossOrigin="anonymous"
                 className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
               />
             </div>

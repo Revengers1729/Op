@@ -182,7 +182,6 @@ export const LenskartHeroCarousel: React.FC<Props> = ({
                   src={slide.imageUrl}
                   alt={slide.title}
                   referrerPolicy="no-referrer"
-                  crossOrigin="anonymous"
                   className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">

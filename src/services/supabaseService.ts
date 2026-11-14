@@ -33,9 +33,169 @@ export const SHAPE_STUDIO_IMAGE_MAP: Record<string, string> = {
   rectangle: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
 };
 
+export const REALTIME_CHANNEL_NAME = 'ao_global_realtime';
+
+// Track optional dedicated tables so missing tables don't spam 404 requests
+const optionalTableExists: Record<'categories' | 'lens_packages' | 'appointments', boolean | null> = {
+  categories: null,
+  lens_packages: null,
+  appointments: null,
+};
+
+function isMissingTableError(error: any): boolean {
+  const msg = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === 'PGRST205' ||
+    error?.code === '42P01' ||
+    msg.includes('could not find the table') ||
+    msg.includes('does not exist')
+  );
+}
+
+// Global real-time broadcast across all open devices, browsers, and tabs
+export async function broadcastCatalogChange(detail?: { table?: string; action?: string; id?: string }): Promise<void> {
+  const payload = { timestamp: Date.now(), ...(detail || {}) };
+
+  try {
+    const ch = supabase.channel(REALTIME_CHANNEL_NAME, {
+      config: { broadcast: { self: false } },
+    }) as any;
+
+    if (typeof ch.httpSend === 'function') {
+      await ch.httpSend('catalog_updated', payload);
+    } else if (typeof ch.send === 'function') {
+      await ch.send({
+        type: 'broadcast',
+        event: 'catalog_updated',
+        payload,
+      });
+    }
+  } catch (e) {
+    console.warn('Realtime broadcast notice:', e);
+  }
+
+  // Cross-tab sync on same client machine via Web BroadcastChannel
+  try {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      const bc = new BroadcastChannel('ao_local_broadcast');
+      bc.postMessage({ type: 'catalog_updated', ...payload });
+      bc.close();
+    }
+  } catch {}
+}
+
+const realtimeListeners = new Set<() => void>();
+let sharedRealtimeChannel: RealtimeChannel | null = null;
+let sharedBroadcastChannel: BroadcastChannel | null = null;
+let notifyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function notifyAllRealtimeListeners(): void {
+  if (notifyDebounceTimer) clearTimeout(notifyDebounceTimer);
+  notifyDebounceTimer = setTimeout(() => {
+    realtimeListeners.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.warn('Realtime listener callback error:', err);
+      }
+    });
+  }, 120);
+}
+
+function registerRealtimeListener(onDataChange: () => void): { unsubscribe: () => void } {
+  realtimeListeners.add(onDataChange);
+
+  if (!sharedRealtimeChannel) {
+    sharedRealtimeChannel = supabase
+      .channel(REALTIME_CHANNEL_NAME, {
+        config: {
+          broadcast: { self: false },
+        },
+      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => notifyAllRealtimeListeners()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        () => notifyAllRealtimeListeners()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lens_packages' },
+        () => notifyAllRealtimeListeners()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments' },
+        () => notifyAllRealtimeListeners()
+      )
+      .on(
+        'broadcast',
+        { event: 'catalog_updated' },
+        () => notifyAllRealtimeListeners()
+      )
+      .subscribe();
+  }
+
+  if (!sharedBroadcastChannel && typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    try {
+      sharedBroadcastChannel = new BroadcastChannel('ao_local_broadcast');
+      sharedBroadcastChannel.onmessage = (event) => {
+        if (event.data?.type === 'catalog_updated') {
+          notifyAllRealtimeListeners();
+        }
+      };
+    } catch {}
+  }
+
+  return {
+    unsubscribe: () => {
+      realtimeListeners.delete(onDataChange);
+      if (realtimeListeners.size === 0) {
+        if (notifyDebounceTimer) {
+          clearTimeout(notifyDebounceTimer);
+          notifyDebounceTimer = null;
+        }
+        if (sharedRealtimeChannel) {
+          try {
+            supabase.removeChannel(sharedRealtimeChannel);
+          } catch {}
+          sharedRealtimeChannel = null;
+        }
+        if (sharedBroadcastChannel) {
+          try {
+            sharedBroadcastChannel.close();
+          } catch {}
+          sharedBroadcastChannel = null;
+        }
+      }
+    },
+  };
+}
+
 export function getStudioEyewearImage(shape?: string, providedUrl?: string): string {
-  if (providedUrl && providedUrl.trim().length > 0 && !providedUrl.includes('photo-1591076482161-42ce6da69f67')) {
-    return providedUrl.trim();
+  if (providedUrl && typeof providedUrl === 'string') {
+    const trimmed = providedUrl.trim();
+    const lower = trimmed.toLowerCase();
+    const isValidScheme =
+      lower.startsWith('https://') ||
+      lower.startsWith('http://') ||
+      lower.startsWith('data:image/') ||
+      lower.startsWith('/');
+    if (
+      trimmed.length > 0 &&
+      isValidScheme &&
+      lower !== 'null' &&
+      lower !== 'undefined' &&
+      !lower.startsWith('blob:') &&
+      !trimmed.includes('photo-1591076482161-42ce6da69f67') &&
+      !(lower.startsWith('data:') && trimmed.length < 300)
+    ) {
+      return trimmed;
+    }
   }
   const s = (shape || 'rectangle').toLowerCase();
   return SHAPE_STUDIO_IMAGE_MAP[s] || SHAPE_STUDIO_IMAGE_MAP.rectangle;
@@ -182,7 +342,9 @@ export const supabaseService = {
           .filter((row: any) => row.category !== 'system_config' && !String(row.id).startsWith('__config_'))
           .map((row: any) => {
             const rawPrice = Number(row.price || 1499);
-            const rawOriginal = Number(row.original_price ?? (rawPrice ? Math.round(rawPrice * 1.5) : 2500));
+            const rawOriginal = Number(
+              row.original_price ?? row.mrp ?? row.originalPrice ?? (rawPrice ? Math.round(rawPrice * 1.5) : 2500)
+            );
             
             // Normalize colors
             let colors: EyewearColor[] = [];
@@ -240,6 +402,9 @@ export const supabaseService = {
 
             const idStr = String(row.id);
             const codeVal = row.code || `AO-${idStr.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase()}`;
+            const inStockVal = row.in_stock !== undefined
+              ? Boolean(row.in_stock)
+              : (row.is_available !== undefined ? Boolean(row.is_available) : true);
 
             return {
               id: idStr,
@@ -251,6 +416,7 @@ export const supabaseService = {
               weightGrams: Number(row.weight_grams ?? row.weightGrams ?? 12),
               price: rawPrice,
               originalPrice: rawOriginal,
+              mrp: rawOriginal,
               dimensions: parseDimensions(row.dimensions),
               colors,
               tags: Array.isArray(row.tags) && row.tags.length > 0
@@ -263,7 +429,8 @@ export const supabaseService = {
               features: Array.isArray(row.features) && row.features.length > 0
                 ? row.features
                 : ['1-Year Store Warranty', 'Pressure-Free Ergonomics'],
-              inStock: row.in_stock !== undefined ? Boolean(row.in_stock) : true,
+              inStock: inStockVal,
+              isAvailable: inStockVal,
               isPopular: Boolean(row.is_popular || row.badge === 'Bestseller'),
               gender: (row.gender?.toLowerCase() as any) || 'unisex',
               category: normalizeCategory(row.category),
@@ -297,6 +464,14 @@ export const supabaseService = {
 
       const imgUrl = getStudioEyewearImage(product.shape, (product as any).imageUrl || (product as any).imagePreview);
 
+      const rawPrice = Number(product.price) || 1499;
+      const rawOriginal = Number(
+        product.originalPrice ?? (product as any).mrp ?? (product as any).original_price ?? Math.round(rawPrice * 1.5)
+      );
+      const inStockVal = product.inStock !== undefined
+        ? Boolean(product.inStock)
+        : ((product as any).is_available !== undefined ? Boolean((product as any).is_available) : true);
+
       const payload: any = {
         id: product.id,
         name: (product.name || 'Anand Optical Frame').trim(),
@@ -304,10 +479,10 @@ export const supabaseService = {
         category: product.category || 'eyeglasses',
         shape: product.shape || 'rectangle',
         material: product.material || 'TR90 Ultra-Flex Polymer',
-        price: Number(product.price) || 1499,
-        original_price: Number(product.originalPrice || Math.round((Number(product.price) || 1499) * 1.5)),
+        price: rawPrice,
+        original_price: rawOriginal,
         badge: product.isPopular ? 'Bestseller' : (product.tags?.[0] || 'Verified'),
-        in_stock: product.inStock !== undefined ? Boolean(product.inStock) : true,
+        in_stock: inStockVal,
         image_url: imgUrl,
         description: (product.description || 'Precision optical frame with pressure-free ergonomics.').trim(),
         gender: product.gender || 'unisex',
@@ -316,14 +491,30 @@ export const supabaseService = {
         features: Array.isArray(product.features) && product.features.length > 0 ? product.features : ['1-Year Store Warranty'],
       };
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('products')
         .upsert(payload, { onConflict: 'id' });
+
+      // Adaptive retry if database uses mrp / is_available column names
+      if (error && (error.message?.includes('original_price') || error.message?.includes('in_stock'))) {
+        const altPayload: any = { ...payload };
+        if (error.message.includes('original_price')) {
+          delete altPayload.original_price;
+          altPayload.mrp = rawOriginal;
+        }
+        if (error.message.includes('in_stock')) {
+          delete altPayload.in_stock;
+          altPayload.is_available = inStockVal;
+        }
+        const retry = await supabase.from('products').upsert(altPayload, { onConflict: 'id' });
+        error = retry.error;
+      }
 
       if (error) {
         console.error('Supabase upsertProduct error:', error);
         return false;
       }
+      await broadcastCatalogChange({ table: 'products', action: 'upsert', id: product.id });
       return true;
     } catch (e) {
       console.error('Supabase upsertProduct exception:', e);
@@ -343,6 +534,7 @@ export const supabaseService = {
         console.error('Supabase deleteProduct error:', error);
         return false;
       }
+      await broadcastCatalogChange({ table: 'products', action: 'delete', id });
       return true;
     } catch (e) {
       console.error('Supabase deleteProduct exception:', e);
@@ -353,15 +545,24 @@ export const supabaseService = {
   // TOGGLE IN-STOCK / SOLD-OUT GLOBALLY
   async toggleStock(id: string, inStock: boolean): Promise<boolean> {
     try {
-      const { error } = await supabase
+      let { error } = await supabase
         .from('products')
         .update({ in_stock: inStock })
         .eq('id', id);
+
+      if (error && error.message?.includes('in_stock')) {
+        const retry = await supabase
+          .from('products')
+          .update({ is_available: inStock })
+          .eq('id', id);
+        error = retry.error;
+      }
 
       if (error) {
         console.error('Supabase toggleStock error:', error);
         return false;
       }
+      await broadcastCatalogChange({ table: 'products', action: 'stock_toggle', id });
       return true;
     } catch (e) {
       console.error('Supabase toggleStock exception:', e);
@@ -375,19 +576,29 @@ export const supabaseService = {
   // ==========================================
   async fetchCategories(): Promise<CategoryItem[]> {
     try {
-      // 1. Try dedicated categories table
-      const { data, error } = await supabase.from('categories').select('*');
-      if (!error && data && data.length > 0) {
-        return data.map((r: any) => ({
-          id: String(r.id),
-          label: r.label || r.name || String(r.id),
-          type: r.type || 'category',
-          sublabel: r.sublabel || '',
-          imageUrl: r.image_url || r.imageUrl || CATEGORY_IMAGE_MAP[r.id] || '',
-        }));
+      // 1. Try dedicated categories table if not known missing
+      if (optionalTableExists.categories !== false) {
+        const { data, error } = await supabase.from('categories').select('*');
+        if (!error) {
+          optionalTableExists.categories = true;
+          if (data && data.length > 0) {
+            return data.map((r: any) => ({
+              id: String(r.id),
+              label: r.label || r.name || String(r.id),
+              type: r.type || 'category',
+              sublabel: r.sublabel || '',
+              imageUrl: getStudioEyewearImage(
+                r.id,
+                r.image_url || r.imageUrl || CATEGORY_IMAGE_MAP[r.id]
+              ),
+            }));
+          }
+        } else if (isMissingTableError(error)) {
+          optionalTableExists.categories = false;
+        }
       }
 
-      // 2. Fallback to __config_categories__ in products table
+      // 2. Reliable fallback to __config_categories__ in products table
       const { data: configRow } = await supabase
         .from('products')
         .select('description')
@@ -397,13 +608,18 @@ export const supabaseService = {
       if (configRow && configRow.description) {
         const parsed = JSON.parse(configRow.description);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((c: any) => ({
-            id: c.id,
-            label: c.label || c.id,
-            type: c.type || (['men', 'women', 'kids'].includes(c.id) ? 'gender' : 'category'),
-            sublabel: c.sublabel || (c.id === 'men' ? 'Trending' : c.id === 'women' ? 'Designer' : 'Collection'),
-            imageUrl: c.imageUrl || CATEGORY_IMAGE_MAP[c.id] || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80',
-          }));
+          return parsed.map((c: any) => {
+            const rawImg = c.imageUrl && !String(c.imageUrl).includes('photo-1591076482161-42ce6da69f67')
+              ? c.imageUrl
+              : (CATEGORY_IMAGE_MAP[c.id] || SHAPE_STUDIO_IMAGE_MAP[c.id] || SHAPE_STUDIO_IMAGE_MAP.rectangle);
+            return {
+              id: c.id,
+              label: c.label || c.id,
+              type: c.type || (['men', 'women', 'kids'].includes(c.id) ? 'gender' : 'category'),
+              sublabel: c.sublabel || (c.id === 'men' ? 'Trending' : c.id === 'women' ? 'Designer' : 'Collection'),
+              imageUrl: rawImg,
+            };
+          });
         }
       }
     } catch (e) {
@@ -415,22 +631,23 @@ export const supabaseService = {
   // Save full list of categories globally to Supabase
   async saveAllCategories(categoriesList: CategoryItem[]): Promise<boolean> {
     try {
-      // Try dedicated table if exists
-      for (const cat of categoriesList) {
-        try {
-          await supabase.from('categories').upsert({
-            id: cat.id,
-            label: cat.label,
-            type: cat.type,
-            sublabel: cat.sublabel,
-            image_url: cat.imageUrl,
-          }, { onConflict: 'id' });
-        } catch {}
+      if (optionalTableExists.categories === true) {
+        for (const cat of categoriesList) {
+          try {
+            await supabase.from('categories').upsert({
+              id: cat.id,
+              label: cat.label,
+              type: cat.type,
+              sublabel: cat.sublabel,
+              image_url: cat.imageUrl,
+            }, { onConflict: 'id' });
+          } catch {}
+        }
       }
 
-      // Also persist to __config_categories__ in products table for guaranteed multi-device sync
+      // Persist to __config_categories__ in products table for guaranteed multi-device sync
       const jsonStr = JSON.stringify(categoriesList);
-      await supabase.from('products').upsert({
+      const { error } = await supabase.from('products').upsert({
         id: '__config_categories__',
         name: '__GLOBAL_CATEGORIES__',
         brand: 'Anand Collection',
@@ -440,7 +657,7 @@ export const supabaseService = {
         price: 0,
         original_price: 0,
         in_stock: false,
-        image_url: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
+        image_url: SHAPE_STUDIO_IMAGE_MAP.rectangle,
         description: jsonStr,
         gender: 'unisex',
         dimensions: '52-18-140 mm',
@@ -448,6 +665,12 @@ export const supabaseService = {
         features: ['Global Categories Sync'],
       }, { onConflict: 'id' });
 
+      if (error) {
+        console.error('Supabase saveAllCategories error:', error);
+        return false;
+      }
+
+      await broadcastCatalogChange({ table: 'categories', action: 'save_all' });
       return true;
     } catch (e) {
       console.error('Failed to sync categories to Supabase:', e);
@@ -457,7 +680,10 @@ export const supabaseService = {
 
   async deleteCategory(id: string): Promise<boolean> {
     try {
-      await supabase.from('categories').delete().eq('id', id);
+      if (optionalTableExists.categories === true) {
+        await supabase.from('categories').delete().eq('id', id);
+      }
+      await broadcastCatalogChange({ table: 'categories', action: 'delete', id });
       return true;
     } catch {
       return false;
@@ -470,20 +696,27 @@ export const supabaseService = {
   // ==========================================
   async fetchLensPackages(): Promise<LensOption[]> {
     try {
-      // 1. Try dedicated lens_packages table
-      const { data, error } = await supabase.from('lens_packages').select('*');
-      if (!error && data && data.length > 0) {
-        return data.map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          subtitle: r.subtitle || '',
-          priceAddon: Number(r.price_addon ?? r.priceAddon ?? r.price ?? 0),
-          description: r.description || '',
-          recommendedFor: r.recommended_for ?? r.recommendedFor ?? '',
-        }));
+      // 1. Try dedicated lens_packages table if not known missing
+      if (optionalTableExists.lens_packages !== false) {
+        const { data, error } = await supabase.from('lens_packages').select('*');
+        if (!error) {
+          optionalTableExists.lens_packages = true;
+          if (data && data.length > 0) {
+            return data.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              subtitle: r.subtitle || '',
+              priceAddon: Number(r.price_addon ?? r.priceAddon ?? r.price ?? 0),
+              description: r.description || '',
+              recommendedFor: r.recommended_for ?? r.recommendedFor ?? '',
+            }));
+          }
+        } else if (isMissingTableError(error)) {
+          optionalTableExists.lens_packages = false;
+        }
       }
 
-      // 2. Fallback to __config_lens_packages__ in products table
+      // 2. Reliable fallback to __config_lens_packages__ in products table
       const { data: configRow } = await supabase
         .from('products')
         .select('description')
@@ -512,23 +745,24 @@ export const supabaseService = {
   // Save full list of lens packages globally to Supabase
   async saveAllLensPackages(lensesList: LensOption[]): Promise<boolean> {
     try {
-      // Try dedicated table if exists
-      for (const lens of lensesList) {
-        try {
-          await supabase.from('lens_packages').upsert({
-            id: lens.id,
-            name: lens.name,
-            subtitle: lens.subtitle,
-            price_addon: lens.priceAddon,
-            description: lens.description,
-            recommended_for: lens.recommendedFor,
-          }, { onConflict: 'id' });
-        } catch {}
+      if (optionalTableExists.lens_packages === true) {
+        for (const lens of lensesList) {
+          try {
+            await supabase.from('lens_packages').upsert({
+              id: lens.id,
+              name: lens.name,
+              subtitle: lens.subtitle,
+              price_addon: lens.priceAddon,
+              description: lens.description,
+              recommended_for: lens.recommendedFor,
+            }, { onConflict: 'id' });
+          } catch {}
+        }
       }
 
-      // Also persist to __config_lens_packages__ in products table
+      // Persist to __config_lens_packages__ in products table
       const jsonStr = JSON.stringify(lensesList);
-      await supabase.from('products').upsert({
+      const { error } = await supabase.from('products').upsert({
         id: '__config_lens_packages__',
         name: '__GLOBAL_LENS_PACKAGES__',
         brand: 'Anand Collection',
@@ -538,7 +772,7 @@ export const supabaseService = {
         price: 0,
         original_price: 0,
         in_stock: false,
-        image_url: 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=800&q=80',
+        image_url: SHAPE_STUDIO_IMAGE_MAP.rectangle,
         description: jsonStr,
         gender: 'unisex',
         dimensions: '52-18-140 mm',
@@ -546,6 +780,12 @@ export const supabaseService = {
         features: ['Global Lens Packages Sync'],
       }, { onConflict: 'id' });
 
+      if (error) {
+        console.error('Supabase saveAllLensPackages error:', error);
+        return false;
+      }
+
+      await broadcastCatalogChange({ table: 'lens_packages', action: 'save_all' });
       return true;
     } catch (e) {
       console.error('Failed to sync lenses to Supabase:', e);
@@ -555,7 +795,10 @@ export const supabaseService = {
 
   async deleteLensPackage(id: string): Promise<boolean> {
     try {
-      await supabase.from('lens_packages').delete().eq('id', id);
+      if (optionalTableExists.lens_packages === true) {
+        await supabase.from('lens_packages').delete().eq('id', id);
+      }
+      await broadcastCatalogChange({ table: 'lens_packages', action: 'delete', id });
       return true;
     } catch {
       return false;
@@ -564,25 +807,46 @@ export const supabaseService = {
 
   // ==========================================
   // 4. APPOINTMENTS (GLOBAL SUPABASE SYNC)
+  // Supports standalone appointments table AND __config_appointments__ row
   // ==========================================
   async fetchAppointments(): Promise<AppointmentItem[]> {
     try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (optionalTableExists.appointments !== false) {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        return data.map((r: any) => ({
-          id: String(r.id),
-          name: r.name,
-          phone: r.phone,
-          date: r.date,
-          timeSlot: r.time_slot ?? r.timeSlot,
-          reason: r.reason || 'General Refraction',
-          createdAt: r.created_at || new Date().toISOString(),
-          status: r.status || 'pending',
-        }));
+        if (!error) {
+          optionalTableExists.appointments = true;
+          if (data && data.length > 0) {
+            return data.map((r: any) => ({
+              id: String(r.id),
+              name: r.name,
+              phone: r.phone,
+              date: r.date,
+              timeSlot: r.time_slot ?? r.timeSlot,
+              reason: r.reason || 'General Refraction',
+              createdAt: r.created_at || new Date().toISOString(),
+              status: r.status || 'pending',
+            }));
+          }
+        } else if (isMissingTableError(error)) {
+          optionalTableExists.appointments = false;
+        }
+      }
+
+      const { data: configRow } = await supabase
+        .from('products')
+        .select('description')
+        .eq('id', '__config_appointments__')
+        .maybeSingle();
+
+      if (configRow && configRow.description) {
+        const parsed = JSON.parse(configRow.description);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Supabase fetchAppointments notice:', e);
@@ -590,33 +854,96 @@ export const supabaseService = {
     return [];
   },
 
-  async insertAppointment(app: Omit<AppointmentItem, 'id' | 'createdAt' | 'status'>): Promise<boolean> {
+  async saveAllAppointmentsConfig(list: AppointmentItem[]): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .insert([{
-          id: `AO-APT-${Math.floor(1000 + Math.random() * 9000)}`,
-          name: app.name,
-          phone: app.phone,
-          date: app.date,
-          time_slot: app.timeSlot,
-          reason: app.reason,
-          status: 'pending',
-        }]);
-
+      const { error } = await supabase.from('products').upsert({
+        id: '__config_appointments__',
+        name: '__GLOBAL_APPOINTMENTS__',
+        brand: 'Anand Collection',
+        category: 'system_config',
+        shape: 'rectangle',
+        material: 'Config Data',
+        price: 0,
+        original_price: 0,
+        in_stock: false,
+        image_url: SHAPE_STUDIO_IMAGE_MAP.rectangle,
+        description: JSON.stringify(list),
+        gender: 'unisex',
+        dimensions: '52-18-140 mm',
+        colors: ['Black'],
+        features: ['Global Appointments Sync'],
+      }, { onConflict: 'id' });
       return !error;
-    } catch (e) {
+    } catch {
       return false;
     }
   },
 
-  async updateAppointmentStatus(id: string, status: string): Promise<boolean> {
+  async insertAppointment(app: Omit<AppointmentItem, 'id' | 'createdAt' | 'status'>): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status })
-        .eq('id', id);
-      return !error;
+      const newApp: AppointmentItem = {
+        id: `AO-APT-${Math.floor(1000 + Math.random() * 9000)}`,
+        name: app.name,
+        phone: app.phone,
+        date: app.date,
+        timeSlot: app.timeSlot,
+        reason: app.reason,
+        createdAt: new Date().toISOString(),
+        status: 'pending',
+      };
+
+      if (optionalTableExists.appointments !== false) {
+        const { error } = await supabase
+          .from('appointments')
+          .insert([{
+            id: newApp.id,
+            name: newApp.name,
+            phone: newApp.phone,
+            date: newApp.date,
+            time_slot: newApp.timeSlot,
+            reason: newApp.reason,
+            status: 'pending',
+          }]);
+        if (!error) {
+          optionalTableExists.appointments = true;
+          await broadcastCatalogChange({ table: 'appointments', action: 'insert', id: newApp.id });
+          return true;
+        } else if (isMissingTableError(error)) {
+          optionalTableExists.appointments = false;
+        }
+      }
+
+      const current = await this.fetchAppointments();
+      const updated = [newApp, ...current];
+      const ok = await this.saveAllAppointmentsConfig(updated);
+      if (ok) {
+        await broadcastCatalogChange({ table: 'appointments', action: 'insert', id: newApp.id });
+      }
+      return ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async updateAppointmentStatus(id: string, status: AppointmentItem['status']): Promise<boolean> {
+    try {
+      if (optionalTableExists.appointments === true) {
+        const { error } = await supabase
+          .from('appointments')
+          .update({ status })
+          .eq('id', id);
+        if (!error) {
+          await broadcastCatalogChange({ table: 'appointments', action: 'update', id });
+          return true;
+        }
+      }
+      const current = await this.fetchAppointments();
+      const updated = current.map((a) => (a.id === id ? { ...a, status } : a));
+      const ok = await this.saveAllAppointmentsConfig(updated);
+      if (ok) {
+        await broadcastCatalogChange({ table: 'appointments', action: 'update', id });
+      }
+      return ok;
     } catch {
       return false;
     }
@@ -624,30 +951,31 @@ export const supabaseService = {
 
   async deleteAppointment(id: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('id', id);
-      return !error;
+      if (optionalTableExists.appointments === true) {
+        const { error } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('id', id);
+        if (!error) {
+          await broadcastCatalogChange({ table: 'appointments', action: 'delete', id });
+          return true;
+        }
+      }
+      const current = await this.fetchAppointments();
+      const updated = current.filter((a) => a.id !== id);
+      const ok = await this.saveAllAppointmentsConfig(updated);
+      if (ok) {
+        await broadcastCatalogChange({ table: 'appointments', action: 'delete', id });
+      }
+      return ok;
     } catch {
       return false;
     }
   },
 
-  // REALTIME SUBSCRIPTION HELPER
-  subscribeToAllChanges(onDataChange: () => void): RealtimeChannel {
-    const channel = supabase
-      .channel('public:realtime:global')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'products' },
-        () => {
-          onDataChange();
-        }
-      )
-      .subscribe();
-
-    return channel;
+  // REALTIME SUBSCRIPTION HELPER (Cross-Device + Multi-Tab Sync)
+  subscribeToAllChanges(onDataChange: () => void): { unsubscribe: () => void } {
+    return registerRealtimeListener(onDataChange);
   },
 
   // SEED DEFAULT SHOWROOM FRAMES TO SUPABASE IN 1-CLICK

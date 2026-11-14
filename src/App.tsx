@@ -109,7 +109,7 @@ export default function App() {
     }
   };
 
-  // Sync Supabase Cloud catalog globally on mount & listen to realtime changes
+  // Sync Supabase Cloud catalog globally on mount & listen to realtime changes + focus/periodic sync
   useEffect(() => {
     refreshDynamicData();
 
@@ -117,8 +117,24 @@ export default function App() {
       refreshDynamicData();
     });
 
+    const handleFocus = () => {
+      refreshDynamicData();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshDynamicData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    const intervalId = window.setInterval(refreshDynamicData, 20000);
+
     return () => {
       channel.unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.clearInterval(intervalId);
     };
   }, []);
 
@@ -193,7 +209,7 @@ export default function App() {
   // Quick Add handler (from the "+" button on catalog cards)
   const handleQuickAdd = (item: EyewearItem) => {
     const defaultColor = item.colors[0];
-    const defaultLens = LENS_OPTIONS[1]; // Single Vision AR
+    const defaultLens = lensPackages[1] || lensPackages[0] || LENS_OPTIONS[1]; // Single Vision AR
     const cartId = `${item.id}-${defaultColor.name}-${defaultLens.id}-${Date.now()}`;
 
     const newCartItem: CartItem = {
@@ -516,7 +532,7 @@ export default function App() {
       {/* 16. PRODUCT CUSTOMIZER MODAL WITH DYNAMIC LENSES */}
       {selectedItemForCustomizer && (
         <ProductCustomizerModal
-          item={selectedItemForCustomizer}
+          item={catalogItems.find((it) => it.id === selectedItemForCustomizer.id) || selectedItemForCustomizer}
           isOpen={Boolean(selectedItemForCustomizer)}
           onClose={() => setSelectedItemForCustomizer(null)}
           lensOptions={lensPackages}

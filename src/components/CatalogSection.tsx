@@ -3,6 +3,7 @@ import { Search, Plus, Filter, Send, Heart, Check, Eye, Star, Sparkles } from 'l
 import { EyewearItem, EyewearTier, FrameShape, EyewearColor, LensOption } from '../types/optical';
 import { CATALOG_ITEMS, LENS_OPTIONS } from '../data/catalog';
 import { EyewearGraphic } from './EyewearGraphic';
+import { getStudioEyewearImage } from '../services/supabaseService';
 
 interface Props {
   onQuickAdd: (item: EyewearItem) => void;
@@ -88,7 +89,7 @@ export const CatalogSection: React.FC<Props> = ({
       }
       return true;
     });
-  }, [selectedTier, selectedShape, selectedGender, selectedCategory, searchQuery]);
+  }, [currentCatalog, selectedTier, selectedShape, selectedGender, selectedCategory, searchQuery]);
 
   const hasActiveFilters =
     selectedTier !== 'all' ||
@@ -286,24 +287,31 @@ export const CatalogSection: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Eyewear Visual Area: Real Photo or Architectural Graphic */}
-                  {/* Eyewear Visual Area: Stable Isolated Display */}
+                  {/* Eyewear Visual Area: Real Photo or Studio Optical Mockup */}
                   <div
                     onClick={() => onOpenCustomizer(item)}
                     className="relative my-4 p-3 cursor-pointer bg-white rounded-xl border border-purple-100 group-hover:border-purple-300 transition-all flex items-center justify-center h-44 overflow-hidden group-hover:shadow-xs"
                   >
-                    {item.imageUrl && !failedImages[item.id] ? (
+                    {!failedImages[item.id] ? (
                       <div className="w-full h-full flex items-center justify-center p-1.5">
                         <img
-                          src={item.imageUrl}
+                          src={getStudioEyewearImage(item.shape, item.imageUrl)}
                           alt={item.name}
                           loading="lazy"
                           decoding="async"
                           referrerPolicy="no-referrer"
-                          crossOrigin="anonymous"
-                          className="max-h-full max-w-full object-contain mx-auto transition-transform duration-300 group-hover:scale-105 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.06)]"
-                          onError={() => {
-                            setFailedImages((prev) => ({ ...prev, [item.id]: true }));
+                          className={`max-h-full max-w-full object-contain mx-auto transition-transform duration-300 group-hover:scale-105 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.06)] ${
+                            !item.inStock ? 'opacity-55 grayscale-[35%]' : ''
+                          }`}
+                          onError={(e) => {
+                            const fallback = getStudioEyewearImage(item.shape);
+                            const target = e.currentTarget;
+                            if (!target.dataset.fallbackApplied && target.src !== fallback) {
+                              target.dataset.fallbackApplied = '1';
+                              target.src = fallback;
+                            } else {
+                              setFailedImages((prev) => ({ ...prev, [item.id]: true }));
+                            }
                           }}
                         />
                       </div>
@@ -316,13 +324,20 @@ export const CatalogSection: React.FC<Props> = ({
                       />
                     )}
 
+                    {/* Sold Out / Stock Status Tag */}
+                    {!item.inStock && (
+                      <div className="absolute top-2 right-2 text-[10px] font-extrabold text-white bg-red-600 px-2 py-0.5 rounded shadow-xs tracking-wider uppercase">
+                        SOLD OUT
+                      </div>
+                    )}
+
                     {/* Weight / Feature Tag */}
                     <div className="absolute bottom-2 right-2 text-[10px] font-mono text-purple-800 bg-white/95 px-2 py-0.5 rounded-md border border-purple-200 shadow-xs">
                       {item.weightGrams}g ultralight
                     </div>
 
                     {/* Gold Member Promo Tag */}
-                    {item.tier === 'budget' && item.price <= 499 && (
+                    {item.tier === 'budget' && item.price <= 499 && item.inStock && (
                       <div className="absolute top-2 left-2 text-[10px] font-extrabold text-amber-900 bg-amber-400 px-2 py-0.5 rounded shadow-xs">
                         FREE WITH ₹99 PROMO
                       </div>
@@ -362,19 +377,30 @@ export const CatalogSection: React.FC<Props> = ({
                     {/* Action buttons (Direct + quick add to tray & Configure Lenses) */}
                     <div className="grid grid-cols-12 gap-2">
                       <button
-                        onClick={() => onQuickAdd(item)}
-                        className="col-span-4 py-2 px-2 text-xs font-extrabold text-white bg-purple-700 hover:bg-purple-800 rounded-xl transition-all flex items-center justify-center gap-1 shadow-sm hover:scale-102 active:scale-98"
-                        title="Add to WhatsApp Order Tray"
+                        onClick={() => item.inStock && onQuickAdd(item)}
+                        disabled={!item.inStock}
+                        className={`col-span-4 py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 shadow-sm ${
+                          item.inStock
+                            ? 'text-white bg-purple-700 hover:bg-purple-800 hover:scale-102 active:scale-98'
+                            : 'text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed'
+                        }`}
+                        title={item.inStock ? 'Add to WhatsApp Order Tray' : 'Currently Sold Out'}
                       >
-                        <Plus className="w-4 h-4" />
-                        <span>Add</span>
+                        {item.inStock ? (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            <span>Add</span>
+                          </>
+                        ) : (
+                          <span>Sold Out</span>
+                        )}
                       </button>
 
                       <button
                         onClick={() => onOpenCustomizer(item)}
                         className="col-span-8 py-2 px-3 text-xs font-bold text-[#162456] bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors flex items-center justify-center gap-1"
                       >
-                        <span>Configure Lenses</span>
+                        <span>{item.inStock ? 'Configure Lenses' : 'View Details'}</span>
                         <Eye className="w-3.5 h-3.5 text-purple-700" />
                       </button>
                     </div>

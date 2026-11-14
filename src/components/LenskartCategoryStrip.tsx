@@ -114,11 +114,18 @@ export const LenskartCategoryStrip: React.FC<Props> = ({
                   }`}
                 >
                   <img
-                    src={cat.imageUrl}
+                    src={cat.imageUrl || 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80'}
                     alt={cat.label}
                     referrerPolicy="no-referrer"
-                    crossOrigin="anonymous"
                     className="w-full h-full object-cover object-center rounded-[14px] group-hover:scale-110 transition-transform duration-500"
+                    onError={(e) => {
+                      const fallback = 'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?auto=format&fit=crop&w=300&q=80';
+                      const target = e.currentTarget;
+                      if (!target.dataset.fallbackApplied && target.src !== fallback) {
+                        target.dataset.fallbackApplied = '1';
+                        target.src = fallback;
+                      }
+                    }}
                   />
                 </div>
 

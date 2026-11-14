@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, Shield, Eye, Send, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import { EyewearItem, EyewearColor, LensOption } from '../types/optical';
 import { LENS_OPTIONS } from '../data/catalog';
-import { EyewearGraphic } from './EyewearGraphic';
+import { getStudioEyewearImage } from '../services/supabaseService';
 
 interface Props {
   item: EyewearItem;
@@ -31,6 +31,14 @@ export const ProductCustomizerModal: React.FC<Props> = ({
   const [rightEye, setRightEye] = useState('');
   const [leftEye, setLeftEye] = useState('');
   const [prescriptionNotes, setPrescriptionNotes] = useState('');
+
+  useEffect(() => {
+    setSelectedColor(item.colors[0]);
+  }, [item.id, item.colors]);
+
+  useEffect(() => {
+    setSelectedLens((curr) => lensOptions.find((l) => l.id === curr.id) || lensOptions[1] || lensOptions[0] || LENS_OPTIONS[1]);
+  }, [lensOptions]);
 
   if (!isOpen) return null;
 
@@ -102,41 +110,40 @@ export const ProductCustomizerModal: React.FC<Props> = ({
           <div className="md:col-span-5 p-6 bg-[#FAF8FD] flex flex-col justify-between border-b md:border-b-0 md:border-r border-purple-100">
             <div>
               <div className="h-48 sm:h-56 bg-white rounded-xl border border-purple-100 p-4 flex items-center justify-center shadow-xs overflow-hidden relative">
-                {item.imageUrl ? (
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      referrerPolicy="no-referrer"
-                      crossOrigin="anonymous"
-                      className="max-h-full max-w-full object-contain filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.08)]"
-                    />
-                    {/* Visual lens tint preview overlay on real photo */}
-                    {selectedLens.id === 'polarized_sun' && (
-                      <div className="absolute inset-0 bg-slate-900/40 pointer-events-none rounded-lg flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded">UV400 Polarized Tint</span>
-                      </div>
-                    )}
-                    {selectedLens.id === 'blue_cut_shield' && (
-                      <div className="absolute inset-0 bg-purple-500/10 pointer-events-none rounded-lg flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-purple-900 bg-white/80 px-2 py-0.5 rounded shadow-xs">420nm Blue Shield</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <EyewearGraphic
-                    shape={item.shape}
-                    color={selectedColor}
-                    className="w-full h-full"
-                    lensTint={
-                      selectedLens.id === 'polarized_sun'
-                        ? 'rgba(15, 23, 42, 0.75)'
-                        : selectedLens.id === 'blue_cut_shield'
-                        ? 'rgba(124, 58, 237, 0.15)'
-                        : 'rgba(255, 255, 255, 0.08)'
-                    }
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <img
+                    src={getStudioEyewearImage(item.shape, item.imageUrl)}
+                    alt={item.name}
+                    referrerPolicy="no-referrer"
+                    className={`max-h-full max-w-full object-contain filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.08)] ${
+                      !item.inStock ? 'opacity-60 grayscale-[35%]' : ''
+                    }`}
+                    onError={(e) => {
+                      const fb = getStudioEyewearImage(item.shape);
+                      const target = e.currentTarget;
+                      if (!target.dataset.fallbackApplied && target.src !== fb) {
+                        target.dataset.fallbackApplied = '1';
+                        target.src = fb;
+                      }
+                    }}
                   />
-                )}
+                  {!item.inStock && (
+                    <div className="absolute top-1 right-1 bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow-xs uppercase">
+                      Sold Out
+                    </div>
+                  )}
+                  {/* Visual lens tint preview overlay on real photo */}
+                  {selectedLens.id === 'polarized_sun' && (
+                    <div className="absolute inset-0 bg-slate-900/40 pointer-events-none rounded-lg flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-0.5 rounded">UV400 Polarized Tint</span>
+                    </div>
+                  )}
+                  {selectedLens.id === 'blue_cut_shield' && (
+                    <div className="absolute inset-0 bg-purple-500/10 pointer-events-none rounded-lg flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-purple-900 bg-white/80 px-2 py-0.5 rounded shadow-xs">420nm Blue Shield</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Color Swatches */}
@@ -324,10 +331,15 @@ export const ProductCustomizerModal: React.FC<Props> = ({
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
+                  disabled={!item.inStock}
                   onClick={handleAddAndClose}
-                  className="flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-md transition-colors"
+                  className={`flex-1 sm:flex-none px-4 py-2.5 text-xs font-bold rounded-md transition-colors border ${
+                    item.inStock
+                      ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                      : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  }`}
                 >
-                  + Add to Tray
+                  {item.inStock ? '+ Add to Tray' : 'Sold Out'}
                 </button>
 
                 <button
@@ -336,7 +348,7 @@ export const ProductCustomizerModal: React.FC<Props> = ({
                   className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors flex items-center justify-center gap-1.5 shadow-md"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>Order on WhatsApp</span>
+                  <span>{item.inStock ? 'Order on WhatsApp' : 'Check Restock on WhatsApp'}</span>
                 </button>
               </div>
             </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Trash2, Plus, Minus, Send, ShieldCheck, MapPin, CheckCircle, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CartItem } from '../types/optical';
-import { EyewearGraphic } from './EyewearGraphic';
+import { getStudioEyewearImage } from '../services/supabaseService';
 
 interface Props {
   isOpen: boolean;
@@ -158,19 +158,20 @@ export const OrderTrayDrawer: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-20 h-14 bg-[#FAF8FD] rounded-lg border border-purple-100 flex items-center justify-center shrink-0 overflow-hidden p-1">
-                      {ci.item.imageUrl ? (
-                        <img
-                          src={ci.item.imageUrl}
-                          alt={ci.item.name}
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      ) : (
-                        <EyewearGraphic
-                          shape={ci.item.shape}
-                          color={ci.selectedColor}
-                          className="w-full h-full"
-                        />
-                      )}
+                      <img
+                        src={getStudioEyewearImage(ci.item.shape, ci.item.imageUrl)}
+                        alt={ci.item.name}
+                        referrerPolicy="no-referrer"
+                        className="max-h-full max-w-full object-contain"
+                        onError={(e) => {
+                          const fallback = getStudioEyewearImage(ci.item.shape);
+                          const target = e.currentTarget;
+                          if (!target.dataset.fallbackApplied && target.src !== fallback) {
+                            target.dataset.fallbackApplied = '1';
+                            target.src = fallback;
+                          }
+                        }}
+                      />
                     </div>
 
                     <div>

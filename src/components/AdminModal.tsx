@@ -155,12 +155,21 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
 
   useEffect(() => {
     if (isOpen) {
-      loadAllData();
+      loadAllData(false);
+
+      // Listen for realtime changes across devices/tabs while Admin Modal is active
+      const sub = supabaseService.subscribeToAllChanges(() => {
+        loadAllData(true);
+      });
+
+      return () => {
+        sub.unsubscribe();
+      };
     }
   }, [isOpen]);
 
-  const loadAllData = async () => {
-    setIsCloudLoading(true);
+  const loadAllData = async (silent = false) => {
+    if (!silent) setIsCloudLoading(true);
     try {
       const [cloudProducts, cloudCats, cloudLenses, cloudAppointments] = await Promise.all([
         supabaseService.fetchProducts(),
@@ -212,7 +221,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
         message: e?.message || 'Using local offline storage',
       });
     } finally {
-      setIsCloudLoading(false);
+      if (!silent) setIsCloudLoading(false);
       setSettings(storageService.getStoreSettings());
     }
   };
@@ -241,7 +250,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     setPasswordInput('');
   };
 
-  // Image Upload with intelligent auto-compression for fast Supabase Cloud sync
+  // Image Upload with iterative HTML5 canvas auto-compression under Supabase payload limits
   const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -255,35 +264,52 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     const reader = new FileReader();
     reader.onload = (uploadEvent) => {
       const rawDataUrl = uploadEvent.target?.result as string;
+      if (!rawDataUrl) return;
+
       const img = new Image();
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 600;
-          let width = img.width;
-          let height = img.height;
+          const MAX_WIDTH = 720;
+          const MAX_HEIGHT = 460;
+          let width = img.naturalWidth || img.width || 600;
+          let height = img.naturalHeight || img.height || 400;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height = Math.round((height * MAX_WIDTH) / width);
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width = Math.round((width * MAX_HEIGHT) / height);
-              height = MAX_HEIGHT;
-            }
+          const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height, 1);
+          width = Math.max(1, Math.round(width * ratio));
+          height = Math.max(1, Math.round(height * ratio));
+
+          const renderAtSize = (w: number, h: number, quality: number): string | null => {
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return null;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, w, h);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+            return canvas.toDataURL('image/jpeg', quality);
+          };
+
+          let optimizedBase64 = '';
+          const qualities = [0.82, 0.68, 0.55, 0.42];
+          for (const q of qualities) {
+            const candidate = renderAtSize(width, height, q);
+            if (!candidate) break;
+            optimizedBase64 = candidate;
+            if (candidate.length <= 180_000) break;
           }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+          if (optimizedBase64 && optimizedBase64.length > 200_000) {
+            const smaller = renderAtSize(Math.max(1, Math.round(width * 0.72)), Math.max(1, Math.round(height * 0.72)), 0.52);
+            if (smaller) optimizedBase64 = smaller;
+          }
+
+          if (optimizedBase64) {
+            const kbSize = Math.round((optimizedBase64.length * 0.75) / 1024);
             setProductForm((prev) => ({ ...prev, imagePreview: optimizedBase64 }));
-            showToast('✓ Photo ready & optimized for instant cloud sync!');
+            showToast(`✓ Photo compressed (${kbSize}KB) & ready for cloud sync!`);
           } else {
             setProductForm((prev) => ({ ...prev, imagePreview: rawDataUrl }));
             showToast('✓ Photo loaded successfully!');
@@ -294,12 +320,12 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
         }
       };
       img.onerror = () => {
-        setProductForm((prev) => ({ ...prev, imagePreview: rawDataUrl }));
-        showToast('✓ Photo loaded!');
+        showToast('✕ Error reading selected image.');
       };
       img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // 1-Click Sold Out / In Stock Toggle (Saves to Supabase Cloud globally)
@@ -611,6 +637,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       storageService.saveLensPackages(updatedList);
       setEditingLens(null);
       await supabaseService.saveAllLensPackages(updatedList);
+      onCatalogUpdated();
       showToast(`✓ Updated lens package "${updatedLens.name}" globally!`);
     } else {
       const newLensId = `lens-${Date.now()}` as any;
@@ -627,6 +654,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
       storageService.saveLensPackages(updatedList);
       setIsAddingLens(false);
       await supabaseService.saveAllLensPackages(updatedList);
+      onCatalogUpdated();
       showToast(`✓ Added lens package "${newLens.name}" globally!`);
     }
   };
@@ -646,6 +674,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
         storageService.saveLensPackages(updated);
         await supabaseService.saveAllLensPackages(updated);
         await supabaseService.deleteLensPackage(id);
+        onCatalogUpdated();
         showToast(`✓ Removed lens package "${name}" globally.`);
       },
     });
@@ -653,15 +682,15 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
 
   // APPOINTMENTS (Globally synced to Supabase Cloud)
   const handleUpdateAppointmentStatus = async (id: string, st: AppointmentItem['status']) => {
-    const updated = storageService.updateAppointmentStatus(id, st);
-    setAppointments(updated);
+    storageService.updateAppointmentStatus(id, st);
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: st } : a)));
     await supabaseService.updateAppointmentStatus(id, st);
     showToast(`Appointment status updated to ${st}`);
   };
 
   const handleDeleteAppointment = async (id: string) => {
-    const updated = storageService.deleteAppointment(id);
-    setAppointments(updated);
+    storageService.deleteAppointment(id);
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
     await supabaseService.deleteAppointment(id);
     showToast('Appointment record deleted');
   };
@@ -988,17 +1017,20 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                               <td className="p-3.5">
                                 <div className="flex items-center gap-2.5">
                                   <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-mono text-[10px] font-bold text-slate-600 shrink-0 overflow-hidden p-1 shadow-xs">
-                                    {(item as any).imageUrl ? (
-                                      <img
-                                        src={(item as any).imageUrl}
-                                        alt={item.name}
-                                        referrerPolicy="no-referrer"
-                                        crossOrigin="anonymous"
-                                        className="w-full h-full object-contain"
-                                      />
-                                    ) : (
-                                      item.shape.slice(0, 3).toUpperCase()
-                                    )}
+                                    <img
+                                      src={getStudioEyewearImage(item.shape, item.imageUrl)}
+                                      alt={item.name}
+                                      referrerPolicy="no-referrer"
+                                      className="w-full h-full object-contain"
+                                      onError={(e) => {
+                                        const fallback = getStudioEyewearImage(item.shape);
+                                        const target = e.currentTarget;
+                                        if (!target.dataset.fallbackApplied && target.src !== fallback) {
+                                          target.dataset.fallbackApplied = '1';
+                                          target.src = fallback;
+                                        }
+                                      }}
+                                    />
                                   </div>
                                   <div>
                                     <span className="font-bold text-slate-900 block">{item.name}</span>
@@ -1016,6 +1048,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-bold text-slate-900">₹</span>
                                   <input
+                                    key={`${item.id}-${item.price}`}
                                     type="number"
                                     id={`quick-price-${item.id}`}
                                     defaultValue={item.price}
@@ -1885,12 +1918,12 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                   </div>
                 </div>
 
-                {/* Image Upload from Phone Camera or Gallery + URL Option */}
+                {/* Image Upload from Phone Camera or Gallery + Direct URL Option */}
                 <div className="p-4 bg-purple-50/50 border border-purple-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-slate-800 flex items-center gap-2">
                       <Camera className="w-4 h-4 text-purple-700" />
-                      <span>Upload Frame Photo (Phone Camera, Gallery, or PC)</span>
+                      <span>Upload Frame Photo (Gallery, Camera, or Direct URL)</span>
                     </label>
                     {productForm.imagePreview && (
                       <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -1898,12 +1931,27 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                       </span>
                     )}
                   </div>
+
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageFileSelect}
                     className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-700 file:text-white hover:file:bg-purple-800 cursor-pointer"
                   />
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                      Or Paste Direct Image URL (HTTPS):
+                    </label>
+                    <input
+                      type="url"
+                      value={productForm.imagePreview.startsWith('data:') ? '' : productForm.imagePreview}
+                      onChange={(e) => setProductForm((prev) => ({ ...prev, imagePreview: e.target.value }))}
+                      placeholder="https://example.com/frame-photo.jpg (leave blank for uploaded file or studio fallback)"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <button
                       type="button"
@@ -1921,7 +1969,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                         type="button"
                         onClick={() => {
                           setProductForm((prev) => ({ ...prev, imagePreview: '' }));
-                          showToast('Photo removed (will use vector graphics)');
+                          showToast('Photo reset to standard studio fallback');
                         }}
                         className="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg border border-red-200 font-bold text-[11px] transition-colors"
                       >
@@ -1934,16 +1982,23 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                     <div className="mt-2 flex items-center gap-4 bg-white p-3 rounded-xl border border-purple-200 shadow-xs">
                       <div className="w-24 h-16 bg-white rounded-lg border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
                         <img
-                          src={productForm.imagePreview}
+                          src={getStudioEyewearImage(productForm.shape, productForm.imagePreview)}
                           alt="Preview"
                           referrerPolicy="no-referrer"
-                          crossOrigin="anonymous"
                           className="w-full h-full object-contain"
+                          onError={(e) => {
+                            const fallback = getStudioEyewearImage(productForm.shape);
+                            const target = e.currentTarget;
+                            if (!target.dataset.fallbackApplied && target.src !== fallback) {
+                              target.dataset.fallbackApplied = '1';
+                              target.src = fallback;
+                            }
+                          }}
                         />
                       </div>
                       <div className="text-[11px] space-y-0.5">
                         <span className="text-slate-900 font-bold block">Live Frame Photo Ready</span>
-                        <span className="text-slate-500 block">Clean horizontal spectacles product photo</span>
+                        <span className="text-slate-500 block">Compressed & synced cleanly to Supabase Cloud</span>
                       </div>
                     </div>
                   )}
