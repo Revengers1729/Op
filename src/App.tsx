@@ -22,7 +22,7 @@ import { AdminModal } from './components/AdminModal';
 import { LegalModals, PolicyType } from './components/LegalModals';
 import { CookieBanner } from './components/CookieBanner';
 import { Footer } from './components/Footer';
-import { storageService, CategoryItem } from './services/storageService';
+import { storageService, CategoryItem, HeroBanner } from './services/storageService';
 import { supabaseService } from './services/supabaseService';
 
 export default function App() {
@@ -62,10 +62,11 @@ export default function App() {
   // Active Bottom Navigation Tab (Home, Stores, AR Try on, Eye Test, Orders)
   const [activeBottomTab, setActiveBottomTab] = useState<string>('home');
 
-  // Dynamic Catalog, Categories & Lenses loaded from storageService
+  // Dynamic Catalog, Categories, Banners & Lenses loaded from storageService
   const [catalogItems, setCatalogItems] = useState<EyewearItem[]>(() => storageService.getProducts());
   const [categoriesList, setCategoriesList] = useState<CategoryItem[]>(() => storageService.getCategories());
   const [lensPackages, setLensPackages] = useState<LensOption[]>(() => storageService.getLensPackages());
+  const [heroBanners, setHeroBanners] = useState<HeroBanner[]>(() => storageService.getBanners());
 
   // Modal states
   const [selectedItemForCustomizer, setSelectedItemForCustomizer] = useState<EyewearItem | null>(null);
@@ -77,10 +78,11 @@ export default function App() {
 
   const refreshDynamicData = async () => {
     try {
-      const [cloudProducts, cloudCats, cloudLenses] = await Promise.all([
+      const [cloudProducts, cloudCats, cloudLenses, cloudBanners] = await Promise.all([
         supabaseService.fetchProducts(),
         supabaseService.fetchCategories(),
         supabaseService.fetchLensPackages(),
+        supabaseService.fetchBanners(),
       ]);
 
       if (Array.isArray(cloudProducts)) {
@@ -101,11 +103,19 @@ export default function App() {
       } else {
         setLensPackages(storageService.getLensPackages());
       }
+
+      if (cloudBanners && cloudBanners.length > 0) {
+        setHeroBanners(cloudBanners);
+        storageService.saveBanners(cloudBanners);
+      } else {
+        setHeroBanners(storageService.getBanners());
+      }
     } catch (err) {
       console.warn('Error syncing cloud catalog, fallback to local:', err);
       setCatalogItems(storageService.getProducts());
       setCategoriesList(storageService.getCategories());
       setLensPackages(storageService.getLensPackages());
+      setHeroBanners(storageService.getBanners());
     }
   };
 
@@ -366,11 +376,13 @@ export default function App() {
       {/* MAIN BODY FLOW (Exact Match to Lenskart Mobile & Desktop Experience) */}
       <main className="flex-1">
         
-        {/* 2. LENSKART HERO CAROUSEL & LIVE COUNTDOWN TIMER */}
+        {/* 2. ADMIN-CONTROLLABLE HERO CAROUSEL (ESSILOR 2026 + STORE OFFERS) & LIVE COUNTDOWN TIMER */}
         <LenskartHeroCarousel
+          banners={heroBanners}
           onReserveHustlr={handleReserveHustlr}
           onExploreFestive={handleExploreFestive}
           onExploreTitanium={handleExploreTitanium}
+          onBookAppointment={() => setIsEyeTestOpen(true)}
         />
 
         {/* 3. CATEGORY AVATARS STRIP (Exact match to user's mobile screenshot) */}

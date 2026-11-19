@@ -26,6 +26,9 @@ import {
   Cloud,
   Database,
   Copy,
+  Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { EyewearItem, LensOption, FrameShape, EyewearTier } from '../types/optical';
 import {
@@ -33,6 +36,8 @@ import {
   CategoryItem,
   AppointmentItem,
   StoreSettings,
+  HeroBanner,
+  DEFAULT_HERO_BANNERS,
   ADMIN_DEFAULT_PASSWORD,
 } from '../services/storageService';
 import {
@@ -57,11 +62,12 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<
-    'products' | 'categories' | 'lenses' | 'appointments' | 'settings' | 'cloud'
+    'products' | 'banners' | 'categories' | 'lenses' | 'appointments' | 'settings' | 'cloud'
   >('products');
 
   // Loaded Data
   const [products, setProducts] = useState<EyewearItem[]>([]);
+  const [banners, setBanners] = useState<HeroBanner[]>(() => storageService.getBanners());
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [lenses, setLenses] = useState<LensOption[]>([]);
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
@@ -149,6 +155,30 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     recommendedFor: '',
   });
 
+  // Edit / Add Hero Slider Banner State
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<HeroBanner | null>(null);
+  const [bannerForm, setBannerForm] = useState<{
+    imageUrl: string;
+    badge: string;
+    title: string;
+    subtitle: string;
+    ctaText: string;
+    ctaLink: string;
+    layout: 'split' | 'fullbleed';
+    isActive: boolean;
+  }>({
+    imageUrl: '/assets/essilor/essilor_obj_112.jpg',
+    badge: 'AUTHORIZED ESSILOR PARTNER • ANAND OPTICAL',
+    title: '',
+    subtitle: '',
+    ctaText: 'Shop Frames Collection',
+    ctaLink: '#catalog',
+    layout: 'split',
+    isActive: true,
+  });
+
   // Change Password State
   const [newAdminPass, setNewAdminPass] = useState('');
   const [confirmAdminPass, setConfirmAdminPass] = useState('');
@@ -171,16 +201,24 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
   const loadAllData = async (silent = false) => {
     if (!silent) setIsCloudLoading(true);
     try {
-      const [cloudProducts, cloudCats, cloudLenses, cloudAppointments] = await Promise.all([
+      const [cloudProducts, cloudCats, cloudLenses, cloudAppointments, cloudBanners] = await Promise.all([
         supabaseService.fetchProducts(),
         supabaseService.fetchCategories(),
         supabaseService.fetchLensPackages(),
         supabaseService.fetchAppointments(),
+        supabaseService.fetchBanners(),
       ]);
 
       if (Array.isArray(cloudProducts)) {
         setProducts(cloudProducts);
         storageService.saveProducts(cloudProducts);
+      }
+
+      if (cloudBanners && cloudBanners.length > 0) {
+        setBanners(cloudBanners);
+        storageService.saveBanners(cloudBanners);
+      } else {
+        setBanners(storageService.getBanners());
       }
 
       if (cloudCats && cloudCats.length > 0) {
@@ -212,6 +250,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
     } catch (e: any) {
       console.warn('Error fetching cloud data in Admin CMS, using local cache:', e);
       setProducts(storageService.getProducts());
+      setBanners(storageService.getBanners());
       setCategories(storageService.getCategories());
       setLenses(storageService.getLensPackages());
       setAppointments(storageService.getAppointments());
@@ -547,6 +586,220 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
         await loadAllData();
         onCatalogUpdated();
         showToast(res.message);
+      },
+    });
+  };
+
+  // HERO BANNER SLIDERS MANAGEMENT (Globally synced to Supabase Cloud)
+  const handleBannerImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast('Banner photo is too large. Please select an image under 15MB.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const rawDataUrl = uploadEvent.target?.result as string;
+      if (!rawDataUrl) return;
+
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1080;
+          const MAX_HEIGHT = 720;
+          let width = img.naturalWidth || img.width || 900;
+          let height = img.naturalHeight || img.height || 540;
+
+          const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height, 1);
+          width = Math.max(1, Math.round(width * ratio));
+          height = Math.max(1, Math.round(height * ratio));
+
+          const renderAtSize = (w: number, h: number, quality: number): string | null => {
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return null;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, w, h);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+            return canvas.toDataURL('image/jpeg', quality);
+          };
+
+          let optimizedBase64 = '';
+          for (const q of [0.82, 0.68, 0.55, 0.42]) {
+            const candidate = renderAtSize(width, height, q);
+            if (!candidate) break;
+            optimizedBase64 = candidate;
+            if (candidate.length <= 180_000) break;
+          }
+
+          if (optimizedBase64) {
+            const kbSize = Math.round((optimizedBase64.length * 0.75) / 1024);
+            setBannerForm((prev) => ({ ...prev, imageUrl: optimizedBase64 }));
+            showToast(`✓ Slider image compressed (${kbSize}KB) & ready for cloud sync!`);
+          } else {
+            setBannerForm((prev) => ({ ...prev, imageUrl: rawDataUrl }));
+            showToast('✓ Slider image loaded!');
+          }
+        } catch {
+          setBannerForm((prev) => ({ ...prev, imageUrl: rawDataUrl }));
+          showToast('✓ Slider image loaded!');
+        }
+      };
+      img.onerror = () => {
+        showToast('✕ Error reading selected banner image.');
+      };
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleOpenAddBanner = () => {
+    setEditingBanner(null);
+    setBannerForm({
+      imageUrl: '/assets/essilor/essilor_obj_112.jpg',
+      badge: 'SPECIAL STORE OFFER • ANAND OPTICAL',
+      title: '',
+      subtitle: '',
+      ctaText: 'Shop Frames Collection',
+      ctaLink: '#catalog',
+      layout: 'split',
+      isActive: true,
+    });
+    setIsBannerModalOpen(true);
+  };
+
+  const handleOpenEditBanner = (banner: HeroBanner) => {
+    setEditingBanner(banner);
+    setBannerForm({
+      imageUrl: banner.imageUrl,
+      badge: banner.badge || '',
+      title: banner.title || '',
+      subtitle: banner.subtitle || '',
+      ctaText: banner.ctaText || 'Shop Now',
+      ctaLink: banner.ctaLink || '#catalog',
+      layout: banner.layout === 'fullbleed' ? 'fullbleed' : 'split',
+      isActive: banner.isActive,
+    });
+    setIsBannerModalOpen(true);
+  };
+
+  const handleSaveBannerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bannerForm.imageUrl.trim()) {
+      showToast('Please upload a slider photo or paste an image URL.');
+      return;
+    }
+
+    setIsSavingBanner(true);
+    try {
+      let updatedList: HeroBanner[];
+      if (editingBanner) {
+        const updatedItem: HeroBanner = {
+          ...editingBanner,
+          imageUrl: bannerForm.imageUrl.trim(),
+          badge: bannerForm.badge.trim() || undefined,
+          title: bannerForm.title.trim() || undefined,
+          subtitle: bannerForm.subtitle.trim() || undefined,
+          ctaText: bannerForm.ctaText.trim() || undefined,
+          ctaLink: bannerForm.ctaLink.trim() || '#catalog',
+          layout: bannerForm.layout,
+          isActive: bannerForm.isActive,
+        };
+        updatedList = banners.map((b) => (b.id === editingBanner.id ? updatedItem : b));
+      } else {
+        const newBanner: HeroBanner = {
+          id: `banner-${Date.now()}`,
+          imageUrl: bannerForm.imageUrl.trim(),
+          badge: bannerForm.badge.trim() || undefined,
+          title: bannerForm.title.trim() || undefined,
+          subtitle: bannerForm.subtitle.trim() || undefined,
+          ctaText: bannerForm.ctaText.trim() || undefined,
+          ctaLink: bannerForm.ctaLink.trim() || '#catalog',
+          layout: bannerForm.layout,
+          isActive: bannerForm.isActive,
+        };
+        updatedList = [newBanner, ...banners];
+      }
+
+      setBanners(updatedList);
+      storageService.saveBanners(updatedList);
+      const ok = await supabaseService.saveAllBanners(updatedList);
+      onCatalogUpdated();
+      setIsBannerModalOpen(false);
+      setEditingBanner(null);
+      showToast(
+        ok
+          ? `✓ Slider ${editingBanner ? 'updated' : 'published'} globally in Supabase Cloud!`
+          : 'Saved locally (check Supabase connection).'
+      );
+    } catch (err: any) {
+      showToast(`✕ Slider save error: ${err?.message || 'Failed'}`);
+    } finally {
+      setIsSavingBanner(false);
+    }
+  };
+
+  const handleToggleBannerActive = async (banner: HeroBanner) => {
+    const updatedList = banners.map((b) =>
+      b.id === banner.id ? { ...b, isActive: !b.isActive } : b
+    );
+    setBanners(updatedList);
+    storageService.saveBanners(updatedList);
+    await supabaseService.saveAllBanners(updatedList);
+    onCatalogUpdated();
+    showToast(`✓ Slider "${banner.title || banner.id}" is now ${!banner.isActive ? 'Live' : 'Hidden'} globally!`);
+  };
+
+  const handleMoveBanner = async (index: number, direction: -1 | 1) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= banners.length) return;
+    const updatedList = [...banners];
+    const [moved] = updatedList.splice(index, 1);
+    updatedList.splice(targetIdx, 0, moved);
+    setBanners(updatedList);
+    storageService.saveBanners(updatedList);
+    await supabaseService.saveAllBanners(updatedList);
+    onCatalogUpdated();
+    showToast('✓ Slider order updated globally!');
+  };
+
+  const handleDeleteBanner = (banner: HeroBanner) => {
+    setConfirmModal({
+      title: 'Delete Slider Banner?',
+      message: `Remove "${banner.title || 'this slider banner'}" from the homepage carousel globally?`,
+      confirmLabel: 'Delete Slider',
+      onConfirm: async () => {
+        const updatedList = banners.filter((b) => b.id !== banner.id);
+        setBanners(updatedList);
+        storageService.saveBanners(updatedList);
+        await supabaseService.saveAllBanners(updatedList);
+        onCatalogUpdated();
+        showToast('✓ Slider deleted globally from Supabase Cloud!');
+      },
+    });
+  };
+
+  const handleResetDefaultBanners = () => {
+    setConfirmModal({
+      title: 'Restore All 25 Default & Essilor PDF Sliders?',
+      message: 'This will restore all 22 official Essilor Visual Branding Docket 2026 campaign slides plus 3 Anand Optical promotional slides globally in Supabase Cloud.',
+      confirmLabel: 'Restore All Sliders',
+      onConfirm: async () => {
+        const defaults = [...DEFAULT_HERO_BANNERS];
+        setBanners(defaults);
+        storageService.saveBanners(defaults);
+        await supabaseService.saveAllBanners(defaults);
+        onCatalogUpdated();
+        showToast('✓ Restored all 25 Essilor 2026 & Anand Optical sliders globally!');
       },
     });
   };
@@ -900,6 +1153,18 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
               </button>
 
               <button
+                onClick={() => { setActiveTab('banners'); }}
+                className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'banners'
+                    ? 'border-purple-700 text-purple-900 bg-white'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4 text-purple-700" />
+                <span>Hero Sliders ({banners.length})</span>
+              </button>
+
+              <button
                 onClick={() => { setActiveTab('categories'); }}
                 className={`flex items-center gap-2 px-4 py-3 text-xs font-bold border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === 'categories'
@@ -1118,6 +1383,152 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ================= 1B. HERO SLIDERS TAB ================= */}
+              {activeTab === 'banners' && (
+                <div className="space-y-6">
+                  {/* Top Action Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+                    <div>
+                      <h4 className="font-extrabold text-base text-slate-900">
+                        Homepage Hero Sliders ({banners.filter((b) => b.isActive).length} Live / {banners.length} Total)
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Includes all 22 Essilor Visual Branding Docket 2026 slides + store offers. Add, edit, reorder, hide, or delete slides globally.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleResetDefaultBanners}
+                        className="px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+                        title="Restore all 22 Essilor PDF slides + 3 Anand Optical store slides"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Restore All 25 Sliders</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleOpenAddBanner}
+                        className="px-4 py-2 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add New Slider</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sliders List */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {banners.map((banner, idx) => (
+                      <div
+                        key={banner.id}
+                        className={`bg-white rounded-2xl border p-4 shadow-xs flex flex-col justify-between gap-3 transition-all ${
+                          banner.isActive ? 'border-slate-200' : 'border-red-200 bg-red-50/20 opacity-75'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-28 h-20 rounded-xl bg-slate-900 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-1">
+                            <img
+                              src={banner.imageUrl}
+                              alt={banner.title || `Slide ${idx + 1}`}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain rounded"
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                                #{idx + 1}
+                              </span>
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-800 uppercase">
+                                {banner.layout === 'fullbleed' ? 'Full Chart' : 'Split Poster'}
+                              </span>
+                              {!banner.isActive && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 uppercase">
+                                  Hidden
+                                </span>
+                              )}
+                            </div>
+
+                            <h5 className="font-bold text-slate-900 text-xs line-clamp-1">
+                              {banner.title || 'Untitled Visual Slide'}
+                            </h5>
+                            {banner.badge && (
+                              <span className="text-[10px] font-semibold text-blue-700 block truncate">
+                                {banner.badge}
+                              </span>
+                            )}
+                            {banner.subtitle && (
+                              <p className="text-[11px] text-slate-500 line-clamp-2 leading-snug">
+                                {banner.subtitle}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleBannerActive(banner)}
+                              className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                                banner.isActive
+                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                              }`}
+                            >
+                              {banner.isActive ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                              <span>{banner.isActive ? 'Live' : 'Hidden'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveBanner(idx, -1)}
+                              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 disabled:opacity-30"
+                              title="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === banners.length - 1}
+                              onClick={() => handleMoveBanner(idx, 1)}
+                              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded border border-slate-200 disabled:opacity-30"
+                              title="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBanner(banner)}
+                              className="px-2.5 py-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md flex items-center gap-1"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBanner(banner)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-md"
+                              title="Delete Slider"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -2059,6 +2470,189 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, onCatalogUpdated 
                   >
                     {isSavingProduct && <RefreshCw className="w-4 h-4 animate-spin text-white" />}
                     <span>{isSavingProduct ? 'Saving to Supabase Cloud...' : editingProduct ? 'Save Changes to Cloud' : 'Publish Frame to Website'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= DEDICATED HERO SLIDER EDIT / ADD MODAL ================= */}
+        {isBannerModalOpen && (
+          <div className="fixed inset-0 z-[75] bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-purple-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-fade-in">
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-gradient-to-r from-[#0A1938] to-[#2E1065] text-white shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-purple-200">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="font-extrabold text-sm sm:text-base">
+                      {editingBanner ? `Edit Slider: ${editingBanner.title || 'Banner'}` : 'Add New Homepage Hero Slider'}
+                    </h5>
+                    <p className="text-[11px] text-purple-200">
+                      Syncs globally to Supabase Cloud & updates all visitors live
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBannerModalOpen(false);
+                    setEditingBanner(null);
+                  }}
+                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveBannerSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+                {/* Image Upload + Direct URL */}
+                <div className="p-4 bg-purple-50/50 border border-purple-200 rounded-xl space-y-3">
+                  <label className="font-bold text-slate-800 flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-purple-700" />
+                    <span>Slider Image (Upload from Device or Paste Image URL) *</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerImageFileSelect}
+                    className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-700 file:text-white hover:file:bg-purple-800 cursor-pointer"
+                  />
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                      Or Paste Direct Image URL / Local Asset Path:
+                    </label>
+                    <input
+                      type="text"
+                      value={bannerForm.imageUrl.startsWith('data:') ? '' : bannerForm.imageUrl}
+                      onChange={(e) => setBannerForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                      placeholder="/assets/essilor/essilor_obj_112.jpg or https://..."
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                  {bannerForm.imageUrl && (
+                    <div className="mt-2 flex items-center gap-4 bg-white p-3 rounded-xl border border-purple-200">
+                      <div className="w-32 h-20 bg-slate-900 rounded-lg overflow-hidden p-1 flex items-center justify-center shrink-0">
+                        <img
+                          src={bannerForm.imageUrl}
+                          alt="Slider preview"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="text-[11px] space-y-0.5">
+                        <span className="font-bold text-slate-900 block">Live Slider Image Preview</span>
+                        <span className="text-slate-500 block">Optimized for desktop & mobile carousels</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Badge Tag</label>
+                    <input
+                      type="text"
+                      value={bannerForm.badge}
+                      onChange={(e) => setBannerForm({ ...bannerForm, badge: e.target.value })}
+                      placeholder="e.g. AUTHORIZED ESSILOR PARTNER"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Slide Layout Style</label>
+                    <select
+                      value={bannerForm.layout}
+                      onChange={(e) => setBannerForm({ ...bannerForm, layout: e.target.value as 'split' | 'fullbleed' })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 font-semibold"
+                    >
+                      <option value="split">Split Editorial + Poster (Recommended)</option>
+                      <option value="fullbleed">Full-Width Chart / Banner</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Headline Title</label>
+                  <input
+                    type="text"
+                    value={bannerForm.title}
+                    onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })}
+                    placeholder="e.g. Crizal® Sapphire™ HR Lenses"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Subtitle / Offer Details</label>
+                  <textarea
+                    rows={2}
+                    value={bannerForm.subtitle}
+                    onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })}
+                    placeholder="Short promotional description shown on the slider..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Button Text (CTA)</label>
+                    <input
+                      type="text"
+                      value={bannerForm.ctaText}
+                      onChange={(e) => setBannerForm({ ...bannerForm, ctaText: e.target.value })}
+                      placeholder="e.g. Shop Frames Collection"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Button Destination</label>
+                    <select
+                      value={bannerForm.ctaLink}
+                      onChange={(e) => setBannerForm({ ...bannerForm, ctaLink: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-purple-600 font-semibold"
+                    >
+                      <option value="#catalog">Eyewear Catalog (#catalog)</option>
+                      <option value="#eyetest">Open Free Eye Test Booking (#eyetest)</option>
+                      <option value="#lens-tech">10D Lens Lab (#lens-tech)</option>
+                      <option value="#store-location">Danapur Store Location (#store-location)</option>
+                      <option value="whatsapp">Direct WhatsApp Inquiry (9430800015)</option>
+                      <option value="reserve_hustlr">Reserve ₹99 Hustlr Offer</option>
+                      <option value="explore_titanium">Filter Royale Titanium Frames</option>
+                    </select>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={bannerForm.isActive}
+                    onChange={(e) => setBannerForm({ ...bannerForm, isActive: e.target.checked })}
+                    className="w-4 h-4 accent-purple-700 rounded"
+                  />
+                  <span className="font-bold text-slate-800">Show this slider live on the homepage</span>
+                </label>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBannerModalOpen(false);
+                      setEditingBanner(null);
+                    }}
+                    className="px-4 py-2 text-slate-600 hover:text-slate-900 font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingBanner}
+                    className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl shadow-md transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSavingBanner && <RefreshCw className="w-4 h-4 animate-spin" />}
+                    <span>{isSavingBanner ? 'Syncing to Cloud...' : editingBanner ? 'Save Slider Changes' : 'Publish Slider Globally'}</span>
                   </button>
                 </div>
               </form>

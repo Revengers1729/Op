@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { EyewearItem, LensOption, FrameShape, EyewearTier, EyewearColor } from '../types/optical';
-import { CategoryItem, AppointmentItem, StoreSettings, DEFAULT_STORE_SETTINGS, storageService } from './storageService';
+import { CategoryItem, AppointmentItem, StoreSettings, HeroBanner, DEFAULT_STORE_SETTINGS, DEFAULT_HERO_BANNERS, storageService } from './storageService';
 import { CATALOG_ITEMS, LENS_OPTIONS } from '../data/catalog';
 
 // ==========================================
@@ -686,6 +686,74 @@ export const supabaseService = {
       await broadcastCatalogChange({ table: 'categories', action: 'delete', id });
       return true;
     } catch {
+      return false;
+    }
+  },
+
+  // ==========================================
+  // 2B. HERO BANNER SLIDERS (GLOBAL SUPABASE SYNC)
+  // Stored in __config_ao_banners__ row inside public.products
+  // ==========================================
+  async fetchBanners(): Promise<HeroBanner[]> {
+    try {
+      const { data: configRow } = await supabase
+        .from('products')
+        .select('description')
+        .eq('id', '__config_ao_banners__')
+        .maybeSingle();
+
+      if (configRow && configRow.description) {
+        const parsed = JSON.parse(configRow.description);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((b: any, idx: number) => ({
+            id: String(b.id || `banner-${idx + 1}`),
+            imageUrl: getStudioEyewearImage('rectangle', b.imageUrl || b.image_url),
+            badge: b.badge ? String(b.badge) : undefined,
+            title: b.title ? String(b.title) : undefined,
+            subtitle: b.subtitle ? String(b.subtitle) : undefined,
+            ctaText: b.ctaText ? String(b.ctaText) : undefined,
+            ctaLink: b.ctaLink ? String(b.ctaLink) : '#catalog',
+            layout: b.layout === 'fullbleed' ? 'fullbleed' : 'split',
+            isActive: b.isActive !== undefined ? Boolean(b.isActive) : true,
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Supabase fetchBanners notice:', e);
+    }
+    return DEFAULT_HERO_BANNERS;
+  },
+
+  async saveAllBanners(bannersList: HeroBanner[]): Promise<boolean> {
+    try {
+      storageService.saveBanners(bannersList);
+      const { error } = await supabase.from('products').upsert({
+        id: '__config_ao_banners__',
+        name: '__GLOBAL_AO_HERO_BANNERS__',
+        brand: 'Anand Collection',
+        category: 'system_config',
+        shape: 'rectangle',
+        material: 'Config Data',
+        price: 0,
+        original_price: 0,
+        in_stock: false,
+        image_url: SHAPE_STUDIO_IMAGE_MAP.rectangle,
+        description: JSON.stringify(bannersList),
+        gender: 'unisex',
+        dimensions: '52-18-140 mm',
+        colors: ['Black'],
+        features: ['Global Hero Sliders Sync'],
+      }, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Supabase saveAllBanners error:', error);
+        return false;
+      }
+
+      await broadcastCatalogChange({ table: 'banners', action: 'save_all' });
+      return true;
+    } catch (e) {
+      console.error('Failed to sync banners to Supabase:', e);
       return false;
     }
   },
