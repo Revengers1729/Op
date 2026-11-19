@@ -6,8 +6,8 @@ import { CATALOG_ITEMS, LENS_OPTIONS } from '../data/catalog';
 // ==========================================
 // SUPABASE GLOBAL CLOUD DATABASE CONFIGURATION
 // ==========================================
-export const DEFAULT_SUPABASE_URL = "https://nfciqwxsxoabquruvnzr.supabase.co";
-export const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_5mCjPAzG7dePjXOHkSVL1Q_WkZy_keP";
+export const DEFAULT_SUPABASE_URL = "https://variyenbdqgfhkoecwii.supabase.co";
+export const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_gF_0A7ZcFLp1u2QA_RUqLA_ArHowVXW";
 
 // Single Supabase client instance
 export const supabase: SupabaseClient = createClient(
